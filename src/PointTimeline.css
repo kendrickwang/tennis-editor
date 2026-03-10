@@ -7,10 +7,17 @@
   -webkit-user-select: none;
 }
 
+/* ── Header ───────────────────────────────────────────────── */
 .ptl__header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+.ptl__header-left {
+  display: flex;
   align-items: baseline;
+  gap: 8px;
 }
 
 .ptl__title {
@@ -26,11 +33,69 @@
   color: #475569;
 }
 
-/* ── Track area ────────────────────────────────────────────── */
+/* ── Zoom controls ────────────────────────────────────────── */
+.ptl__zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ptl__zoom-btn {
+  background: #1e2235;
+  border: 1px solid #2d3346;
+  color: #94a3b8;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+.ptl__zoom-btn:hover:not(:disabled) { background: #2d3346; color: #e2e8f0; }
+.ptl__zoom-btn:disabled { opacity: 0.3; cursor: default; }
+
+.ptl__zoom-label {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  padding: 0 6px;
+  cursor: pointer;
+  min-width: 32px;
+  text-align: center;
+  transition: color 0.12s;
+}
+.ptl__zoom-label:hover { color: #94a3b8; }
+
+/* ── Minimap (shown when zoomed) ──────────────────────────── */
+.ptl__minimap {
+  position: relative;
+  height: 4px;
+  background: #131621;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ptl__minimap-window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #3b82f6;
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+/* ── Track ────────────────────────────────────────────────── */
 .ptl__track-wrap {
   position: relative;
   height: 36px;
   cursor: crosshair;
+  overflow: hidden; /* keep segments clipped to the viewport */
 }
 
 .ptl__track-bg {
@@ -43,7 +108,7 @@
   border-radius: 5px;
 }
 
-/* ── Point segments ───────────────────────────────────────── */
+/* ── Segments ─────────────────────────────────────────────── */
 .ptl__segment {
   position: absolute;
   top: 50%;
@@ -54,13 +119,11 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  transition: filter 0.1s;
   cursor: pointer;
   min-width: 3px;
+  transition: filter 0.1s;
 }
-
-.ptl__segment:hover { filter: brightness(1.2); }
-
+.ptl__segment:hover { filter: brightness(1.25); }
 .ptl__segment--p1 { background: #16a34a; }
 .ptl__segment--p2 { background: #ea580c; }
 
@@ -87,7 +150,6 @@
   z-index: 3;
   animation: ptl-pulse 1s ease-in-out infinite alternate;
 }
-
 @keyframes ptl-pulse {
   from { opacity: 0.6; }
   to   { opacity: 1; }
@@ -105,7 +167,6 @@
   pointer-events: none;
   z-index: 4;
 }
-
 .ptl__playhead::before {
   content: '';
   position: absolute;
@@ -118,20 +179,26 @@
   background: #fff;
 }
 
-/* ── Time ruler ───────────────────────────────────────────── */
-.ptl__ruler {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.65rem;
+/* ── Ruler ────────────────────────────────────────────────── */
+.ptl__ruler-wrap {
+  position: relative;
+  height: 14px;
+}
+
+.ptl__ruler-mark {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.62rem;
   color: #334155;
   font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  white-space: nowrap;
 }
 
 /* ── Legend ───────────────────────────────────────────────── */
 .ptl__legend {
   display: flex;
   gap: 12px;
-  margin-top: 2px;
+  flex-wrap: wrap;
 }
 
 .ptl__legend-item {
@@ -141,7 +208,6 @@
   font-size: 0.68rem;
   color: #475569;
 }
-
 .ptl__legend-item::before {
   content: '';
   display: inline-block;
@@ -149,6 +215,8 @@
   height: 8px;
   border-radius: 2px;
 }
-.ptl__legend-item--p1::before { background: #16a34a; }
-.ptl__legend-item--p2::before { background: #ea580c; }
+.ptl__legend-item--p1::before  { background: #16a34a; }
+.ptl__legend-item--p2::before  { background: #ea580c; }
 .ptl__legend-item--gap::before { background: #1e2235; border: 1px solid #334155; }
+.ptl__legend-item--scroll { color: #2d3346; font-style: italic; }
+.ptl__legend-item--scroll::before { display: none; }

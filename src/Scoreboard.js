@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import './Scoreboard.css';
 
-// Per-player point display — each row is fully independent
-function playerPtDisplay(p1, p2, isTb, playerIdx) {
-  const [mine, theirs] = playerIdx === 0 ? [p1, p2] : [p2, p1];
+// Returns the display string for one player's current game points
+function playerPtDisplay(p1, p2, isTb, idx) {
+  const [mine, theirs] = idx === 0 ? [p1, p2] : [p2, p1];
   if (isTb) return String(mine);
   if (mine >= 3 && theirs >= 3) {
-    if (mine === theirs) return '40'; // deuce
+    if (mine === theirs) return '40'; // deuce — both show 40
     return mine > theirs ? 'Ad' : '40';
   }
   return ['0', '15', '30', '40'][mine] ?? '0';
@@ -24,27 +24,26 @@ function displayToPts(val) {
   return { '0': 0, '15': 1, '30': 2, '40': 3 }[val] ?? 0;
 }
 
-function buildDraft(score) {
-  const p1d = playerPtDisplay(score.currentGame[0], score.currentGame[1], score.isTiebreak, 0);
-  const p2d = playerPtDisplay(score.currentGame[0], score.currentGame[1], score.isTiebreak, 1);
-  return {
-    setsStr: score.sets.map(s => `${s.p1}-${s.p2}`).join(' '),
-    g1: String(score.currentSet[0]),
-    g2: String(score.currentSet[1]),
-    p1pts: p1d,
-    p2pts: p2d,
-    isTb: score.isTiebreak,
-  };
-}
-
-// Always show 3 set columns; fill empty ones with '–'
 const MAX_SETS = 3;
 
 export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'] }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(null);
 
-  function openEdit() { setDraft(buildDraft(score)); setEditing(true); }
+  function openEdit() {
+    const p1d = playerPtDisplay(score.currentGame[0], score.currentGame[1], score.isTiebreak, 0);
+    const p2d = playerPtDisplay(score.currentGame[0], score.currentGame[1], score.isTiebreak, 1);
+    setDraft({
+      setsStr: score.sets.map(s => `${s.p1}-${s.p2}`).join(' '),
+      g1: String(score.currentSet[0]),
+      g2: String(score.currentSet[1]),
+      p1pts: p1d,
+      p2pts: p2d,
+      isTb: score.isTiebreak,
+    });
+    setEditing(true);
+  }
+
   function set(k, v) { setDraft(d => ({ ...d, [k]: v })); }
 
   function saveEdit() {
@@ -55,7 +54,7 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'] 
     } else {
       let r1 = displayToPts(draft.p1pts);
       let r2 = displayToPts(draft.p2pts);
-      if (r1 === 4 && r2 === 4) { r1 = 3; r2 = 3; } // both Adv → deuce
+      if (r1 === 4 && r2 === 4) { r1 = 3; r2 = 3; }
       cg = [r1, r2];
     }
     onScoreChange({
@@ -73,7 +72,7 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'] 
       <div className="sb sb--edit">
         <div className="sb__edit-title">Edit Score</div>
         <div className="sb__edit-field">
-          <label>Past sets (e.g.&nbsp;6-3&nbsp;7-5)</label>
+          <label>Past sets (e.g. 6-3 7-5)</label>
           <input value={draft.setsStr} placeholder="6-3 7-5"
             onChange={e => set('setsStr', e.target.value)} />
         </div>
@@ -117,72 +116,59 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'] 
     );
   }
 
-  // Build exactly MAX_SETS set columns
+  // Set columns: always render MAX_SETS slots
   const setCols = Array.from({ length: MAX_SETS }, (_, i) => score.sets[i] ?? null);
-  const currentSetIdx = score.sets.length; // 0-based index of the in-progress set
 
   return (
     <div className="sb">
-      {/* Header row */}
-      <div className="sb__header-row">
-        <div className="sb__cell sb__cell--name" />
-        {setCols.map((_, i) => (
-          <div key={i} className={`sb__cell sb__cell--set-hd ${i === currentSetIdx ? 'sb__cell--active-hd' : ''}`}>
-            {i + 1}
-          </div>
-        ))}
-        <div className="sb__cell sb__cell--game-hd">
-          {score.isTiebreak ? 'TB' : 'GAME'}
-        </div>
-        <div className="sb__cell sb__cell--edit-hd">
-          <button className="sb__edit-btn" onClick={openEdit} title="Edit score">✏</button>
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="sb__divider" />
-
-      {/* Player rows */}
-      {[0, 1].map(pi => {
-        const ptVal = playerPtDisplay(
-          score.currentGame[0], score.currentGame[1], score.isTiebreak, pi
-        );
-        const isWinner = score.matchWinner === pi + 1;
-        return (
-          <div key={pi} className={`sb__player-row ${pi === 1 ? 'sb__player-row--last' : ''}`}>
-            <div className={`sb__cell sb__cell--name ${isWinner ? 'sb__cell--winner' : ''}`}>
-              {names[pi]}
-            </div>
-            {setCols.map((s, si) => {
-              const mine   = s ? (pi === 0 ? s.p1 : s.p2) : null;
-              const theirs = s ? (pi === 0 ? s.p2 : s.p1) : null;
-              const won    = s && mine > theirs;
-              const isCurrent = si === currentSetIdx;
-              return (
-                <div
-                  key={si}
-                  className={`sb__cell sb__cell--set
-                    ${won ? 'sb__cell--set-win' : ''}
-                    ${isCurrent ? 'sb__cell--set-current' : ''}
-                    ${!s ? 'sb__cell--set-empty' : ''}`}
-                >
-                  {s != null ? mine : ''}
-                </div>
-              );
-            })}
-            <div className={`sb__cell sb__cell--game ${ptVal === 'Ad' ? 'sb__cell--adv' : ''}`}>
-              {ptVal}
-            </div>
-            <div className="sb__cell sb__cell--edit-hd" /> {/* spacer to align with header */}
-          </div>
-        );
-      })}
-
-      {/* Match winner banner */}
+      <table className="sb__table">
+        <thead>
+          <tr className="sb__head-row">
+            <th className="sb__th sb__th--name"></th>
+            {setCols.map((_, i) => (
+              <th key={i} className="sb__th sb__th--num">{i + 1}</th>
+            ))}
+            <th className="sb__th sb__th--num">Gm</th>
+            <th className="sb__th sb__th--pt">{score.isTiebreak ? 'TB' : 'Pt'}</th>
+            <th className="sb__th sb__th--btn"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {[0, 1].map(pi => {
+            const pt = playerPtDisplay(score.currentGame[0], score.currentGame[1], score.isTiebreak, pi);
+            return (
+              <tr key={pi} className="sb__row">
+                <td className={`sb__td sb__td--name ${score.matchWinner === pi + 1 ? 'sb__td--winner' : ''}`}>
+                  {names[pi].toUpperCase()}
+                </td>
+                {setCols.map((s, si) => {
+                  const mine   = s ? (pi === 0 ? s.p1 : s.p2) : null;
+                  const theirs = s ? (pi === 0 ? s.p2 : s.p1) : null;
+                  const won    = s != null && mine > theirs;
+                  return (
+                    <td key={si} className={`sb__td sb__td--num ${won ? 'sb__td--set-win' : ''} ${s == null ? 'sb__td--empty' : ''}`}>
+                      {s != null ? mine : '–'}
+                    </td>
+                  );
+                })}
+                <td className="sb__td sb__td--num sb__td--games">
+                  {score.currentSet[pi]}
+                </td>
+                <td className={`sb__td sb__td--pt ${pt === 'Ad' ? 'sb__td--adv' : ''}`}>
+                  {pt}
+                </td>
+                {pi === 0 && (
+                  <td className="sb__td sb__td--btn" rowSpan={2}>
+                    <button className="sb__edit-btn" onClick={openEdit} title="Edit score">✏</button>
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
       {score.matchWinner && (
-        <div className="sb__winner-banner">
-          {names[score.matchWinner - 1]} wins the match
-        </div>
+        <div className="sb__winner">{names[score.matchWinner - 1].toUpperCase()} WINS</div>
       )}
     </div>
   );

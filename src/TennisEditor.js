@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Scoreboard from './Scoreboard';
 import PointTimeline from './PointTimeline';
+import VideoExporter from './VideoExporter';
 import { INITIAL_SCORE, addPoint, scoreLabel } from './tennisScore';
 import './TennisEditor.css';
 
@@ -14,6 +15,7 @@ function fmtTime(s) {
 
 export default function TennisEditor() {
   const [videoSrc, setVideoSrc] = useState(null);
+  const [videoFile, setVideoFile] = useState(null);
   const [fileName, setFileName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -50,6 +52,7 @@ export default function TennisEditor() {
     if (!file || !file.type.startsWith('video/')) return;
     const url = URL.createObjectURL(file);
     setVideoSrc(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
+    setVideoFile(file);
     setFileName(file.name);
     setDuration(0);
     setScore(INITIAL_SCORE);
@@ -128,8 +131,11 @@ export default function TennisEditor() {
   }, []); // stable — reads from refs only
 
   useEffect(() => {
-    window.addEventListener('keydown', keyHandler);
-    return () => window.removeEventListener('keydown', keyHandler);
+    // Capture phase (true) so our handler fires before the native <video controls>
+    // handler. This lets e.preventDefault() actually block the browser's built-in
+    // Space/Arrow behaviour instead of fighting with it after the fact.
+    window.addEventListener('keydown', keyHandler, true);
+    return () => window.removeEventListener('keydown', keyHandler, true);
   }, [keyHandler]);
 
   function seekTo(t) {
@@ -189,6 +195,14 @@ export default function TennisEditor() {
             </div>
           </div>
 
+          {/* Status bar — directly below the video */}
+          <div className={`te__status te__status--${status.kind}`}>
+            {pendingStart !== null && (
+              <span className="te__status-marker">● Start: {fmtTime(pendingStart)}</span>
+            )}
+            {status.text}
+          </div>
+
           {/* Keyboard hints */}
           <div className="te__hints">
             <span><kbd>Space</kbd> Play / Pause</span>
@@ -198,13 +212,12 @@ export default function TennisEditor() {
             <span><kbd>R</kbd> P2 wins</span>
           </div>
 
-          {/* Status bar */}
-          <div className={`te__status te__status--${status.kind}`}>
-            {pendingStart !== null && (
-              <span className="te__status-marker">● Start: {fmtTime(pendingStart)}</span>
-            )}
-            {status.text}
-          </div>
+          {/* Export */}
+          <VideoExporter
+            videoFile={videoFile}
+            points={points}
+            fileName={fileName}
+          />
 
           {/* Point timeline */}
           <PointTimeline
