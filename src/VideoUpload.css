@@ -1,0 +1,120 @@
+.video-upload {
+  min-height: 100vh;
+  background-color: #0f1117;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #fff;
+}
+
+.video-upload__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  letter-spacing: -0.02em;
+}
+
+/* Drop zone */
+.video-upload__dropzone {
+  width: 100%;
+  max-width: 560px;
+  border: 2px dashed #3a3f4b;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+  background-color: #1a1d27;
+}
+
+.video-upload__dropzone:hover,
+.video-upload__dropzone--active {
+  border-color: #4f8ef7;
+  background-color: #1e2235;
+}
+
+.video-upload__icon {
+  width: 48px;
+  height: 48px;
+  color: #4f8ef7;
+}
+
+.video-upload__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.video-upload__prompt {
+  font-size: 1rem;
+  color: #c0c4d0;
+  margin: 0;
+}
+
+.video-upload__prompt span {
+  color: #4f8ef7;
+  text-decoration: underline;
+}
+
+.video-upload__hint {
+  font-size: 0.8rem;
+  color: #5a5f6e;
+  margin: 0;
+}
+
+.video-upload__input {
+  display: none;
+}
+
+/* Player */
+.video-upload__player {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.video-upload__file-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.video-upload__file-name {
+  flex: 1;
+  font-size: 0.9rem;
+  color: #c0c4d0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.video-upload__change-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid #3a3f4b;
+  color: #c0c4d0;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.video-upload__change-btn:hover {
+  border-color: #4f8ef7;
+  color: #4f8ef7;
+}
+
+.video-upload__video {
+  width: 100%;
+  border-radius: 10px;
+  background-color: #000;
+  outline: none;
+}

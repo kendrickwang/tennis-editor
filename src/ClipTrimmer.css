@@ -1,0 +1,156 @@
+.trimmer {
+  width: 100%;
+  background: #1a1d27;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Time labels row */
+.trimmer__labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  letter-spacing: 0.02em;
+}
+.trimmer__label-in  { color: #4ade80; }
+.trimmer__label-now { color: #e2e8f0; }
+.trimmer__label-out { color: #f87171; }
+
+/* Timeline container */
+.trimmer__timeline {
+  position: relative;
+  height: 48px;
+  cursor: pointer;
+}
+
+/* Dim track behind the clip region */
+.trimmer__track-bg {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 6px;
+  transform: translateY(-50%);
+  background: #2d3346;
+  border-radius: 3px;
+}
+
+/* Selected region highlight */
+.trimmer__region {
+  position: absolute;
+  top: 50%;
+  height: 6px;
+  transform: translateY(-50%);
+  background: #3b82f6;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+/* --- Handles --- */
+.trimmer__handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 40px;
+  cursor: ew-resize;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The visual bar inside each handle */
+.trimmer__handle::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.1s;
+}
+
+.trimmer__handle--start::after { background: #4ade80; }
+.trimmer__handle--end::after   { background: #f87171; }
+
+.trimmer__handle:hover::after { width: 6px; }
+
+/* Arrow notch on each handle so the direction is obvious */
+.trimmer__handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+}
+.trimmer__handle--start::before {
+  left: 0;
+  border-right-color: #4ade80;
+}
+.trimmer__handle--end::before {
+  right: 0;
+  border-left-color: #f87171;
+}
+
+/* --- Playhead --- */
+.trimmer__playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: #ffffff;
+  border-radius: 1px;
+  cursor: ew-resize;
+  z-index: 4;
+}
+
+/* Circle at top of playhead */
+.trimmer__playhead::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -40%);
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+/* --- Controls row --- */
+.trimmer__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.trimmer__play-btn {
+  background: #3b82f6;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding-left: 2px; /* optical center for the play triangle */
+  transition: background 0.15s;
+}
+
+.trimmer__play-btn:hover { background: #2563eb; }
+
+.trimmer__clip-len {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+}

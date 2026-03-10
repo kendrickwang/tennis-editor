@@ -1,0 +1,245 @@
+/* ═══════════════════════════════════════════════════════════
+   US Open-style scoreboard overlay
+   ═══════════════════════════════════════════════════════════ */
+
+.sb {
+  font-family: 'Arial', 'Helvetica Neue', sans-serif;
+  background: rgba(8, 18, 40, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  min-width: 280px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Shared cell base ───────────────────────────────────── */
+.sb__cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Column widths — fixed so nothing shifts or overlaps */
+.sb__cell--name     { flex: 0 0 100px; justify-content: flex-start; padding-left: 10px; }
+.sb__cell--set-hd,
+.sb__cell--set      { flex: 0 0 34px; }
+.sb__cell--game-hd,
+.sb__cell--game     { flex: 0 0 52px; }
+.sb__cell--edit-hd  { flex: 0 0 28px; }
+
+/* ── Header row ─────────────────────────────────────────── */
+.sb__header-row {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 5px 0 4px;
+}
+
+.sb__cell--set-hd,
+.sb__cell--game-hd {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.sb__cell--active-hd {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ── Horizontal divider ─────────────────────────────────── */
+.sb__divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ── Player rows ────────────────────────────────────────── */
+.sb__player-row {
+  display: flex;
+  align-items: center;
+  padding: 7px 0;
+}
+
+.sb__player-row + .sb__player-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Name cell */
+.sb__cell--name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sb__cell--winner {
+  color: #facc15;
+}
+
+/* Completed set scores */
+.sb__cell--set {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
+}
+.sb__cell--set-win {
+  font-weight: 700;
+  color: #ffffff;
+}
+.sb__cell--set-current {
+  /* current in-progress set — slightly brighter */
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+}
+.sb__cell--set-empty {
+  color: transparent; /* render as blank, keeps column width */
+}
+
+/* Current game score */
+.sb__cell--game {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #facc15;   /* gold — matches TV broadcast style */
+}
+.sb__cell--adv {
+  color: #60a5fa;   /* blue for advantage — stands out from normal scoring */
+  font-size: 0.9rem;
+}
+
+/* Edit button cell */
+.sb__edit-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 2px 4px;
+  line-height: 1;
+  transition: color 0.15s;
+  display: block;
+}
+.sb__edit-btn:hover { color: rgba(255, 255, 255, 0.7); }
+
+/* Match winner banner */
+.sb__winner-banner {
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
+  border-top: 1px solid rgba(74, 222, 128, 0.25);
+  padding: 5px 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Edit panel — replaces the display scoreboard
+   ═══════════════════════════════════════════════════════════ */
+
+.sb--edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  min-width: 230px;
+  background: #0d1829;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.sb__edit-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 2px;
+}
+
+.sb__edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sb__edit-field label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.sb__edit-field input,
+.sb__edit-field select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 0.82rem;
+  padding: 5px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.sb__edit-field input:focus,
+.sb__edit-field select:focus {
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.sb__edit-field select option {
+  background: #0d1829;
+}
+
+.sb__edit-pair {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sb__edit-pair input,
+.sb__edit-pair select { width: 62px; }
+
+.sb__dash {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.sb__edit-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+}
+.sb__edit-check input { width: auto; }
+
+.sb__edit-actions {
+  display: flex;
+  gap: 7px;
+  padding-top: 2px;
+}
+
+.sb__btn {
+  flex: 1;
+  padding: 6px 0;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sb__btn:hover { opacity: 0.85; }
+.sb__btn--save   { background: #2563eb; color: #fff; }
+.sb__btn--cancel { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); }

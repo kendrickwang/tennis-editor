@@ -1,0 +1,154 @@
+.ptl {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ptl__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.ptl__title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #475569;
+}
+
+.ptl__count {
+  font-size: 0.7rem;
+  color: #475569;
+}
+
+/* ── Track area ────────────────────────────────────────────── */
+.ptl__track-wrap {
+  position: relative;
+  height: 36px;
+  cursor: crosshair;
+}
+
+.ptl__track-bg {
+  position: absolute;
+  inset: 0;
+  top: 50%;
+  height: 10px;
+  transform: translateY(-50%);
+  background: #1e2235;
+  border-radius: 5px;
+}
+
+/* ── Point segments ───────────────────────────────────────── */
+.ptl__segment {
+  position: absolute;
+  top: 50%;
+  height: 24px;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: filter 0.1s;
+  cursor: pointer;
+  min-width: 3px;
+}
+
+.ptl__segment:hover { filter: brightness(1.2); }
+
+.ptl__segment--p1 { background: #16a34a; }
+.ptl__segment--p2 { background: #ea580c; }
+
+.ptl__label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 3px;
+  pointer-events: none;
+}
+
+/* ── Pending start marker ─────────────────────────────────── */
+.ptl__pending-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: #facc15;
+  border-radius: 1px;
+  z-index: 3;
+  animation: ptl-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes ptl-pulse {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
+}
+
+/* ── Playhead ─────────────────────────────────────────────── */
+.ptl__playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: #fff;
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.ptl__playhead::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -30%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* ── Time ruler ───────────────────────────────────────────── */
+.ptl__ruler {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: #334155;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+/* ── Legend ───────────────────────────────────────────────── */
+.ptl__legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.ptl__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.68rem;
+  color: #475569;
+}
+
+.ptl__legend-item::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 8px;
+  border-radius: 2px;
+}
+.ptl__legend-item--p1::before { background: #16a34a; }
+.ptl__legend-item--p2::before { background: #ea580c; }
+.ptl__legend-item--gap::before { background: #1e2235; border: 1px solid #334155; }
