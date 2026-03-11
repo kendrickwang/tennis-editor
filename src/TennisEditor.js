@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Scoreboard from './Scoreboard';
 import PointTimeline from './PointTimeline';
 import VideoExporter from './VideoExporter';
@@ -51,6 +51,26 @@ export default function TennisEditor() {
 
   // Derive current serving from score + initialServer (auto-computed, no extra state)
   const serving = computeServer(score, initialServer);
+
+  // Scoreboard display: reflect the score/serving at the current video timestamp.
+  // Walks the sorted points array to find where currentTime falls.
+  const displayState = useMemo(() => {
+    if (points.length === 0) {
+      return { score: INITIAL_SCORE, serving: computeServer(INITIAL_SCORE, initialServer) };
+    }
+    let displayScore = INITIAL_SCORE;
+    let displayServing = computeServer(INITIAL_SCORE, initialServer);
+    for (const pt of points) {
+      if (pt.startTime > currentTime) break;
+      displayScore = pt.scoreBefore;
+      displayServing = pt.serving;
+      if (currentTime >= pt.endTime) {
+        displayScore = addPoint(pt.scoreBefore, pt.winner);
+        displayServing = computeServer(displayScore, initialServer);
+      }
+    }
+    return { score: displayScore, serving: displayServing };
+  }, [points, currentTime, initialServer]);
 
   // Video time tracking
   useEffect(() => {
@@ -277,10 +297,10 @@ export default function TennisEditor() {
             />
             <div className="te__sb-overlay">
               <Scoreboard
-                score={score}
+                score={displayState.score}
                 onScoreChange={newScore => { setScore(newScore); scoreRef.current = newScore; }}
                 names={[p1Name, p2Name]}
-                serving={serving}
+                serving={displayState.serving}
                 onServingChange={s => { if (s !== serving) setInitialServer(1 - initialServer); }}
               />
             </div>
@@ -374,6 +394,7 @@ export default function TennisEditor() {
                     }
                   }
                   const isManualServe = pt.servingManual !== undefined;
+                  const tiebreakStarted = gameWon && !setCompleted && scoreAfter.isTiebreak;
                   const nextServer = gameWon && !matchWon ? computeServer(scoreAfter, initialServer) : null;
                   const nextServerName = nextServer === 0 ? p1Name : p2Name;
                   return (
@@ -402,7 +423,7 @@ export default function TennisEditor() {
                       {bannerText && (
                         <div className={`te__game-banner te__game-banner--p${pt.winner}${matchWon ? ' te__game-banner--match' : setCompleted ? ' te__game-banner--set' : ''}`}>
                           <span>{bannerText}</span>
-                          {!matchWon && (
+                          {!matchWon && !tiebreakStarted && (
                             <span className="te__banner-serve">
                               🎾 {nextServerName} to serve
                               <button
@@ -412,6 +433,19 @@ export default function TennisEditor() {
                               >↺ swap</button>
                             </span>
                           )}
+                        </div>
+                      )}
+                      {tiebreakStarted && (
+                        <div className="te__tiebreak-banner">
+                          <span>Tiebreak</span>
+                          <span className="te__banner-serve">
+                            🎾 {nextServerName} to serve first
+                            <button
+                              className="te__banner-swap"
+                              onClick={() => setInitialServer(1 - initialServer)}
+                              title="Swap who serves first in the tiebreak"
+                            >↺ swap</button>
+                          </span>
                         </div>
                       )}
                     </React.Fragment>
