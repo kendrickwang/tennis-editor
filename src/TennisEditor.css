@@ -497,6 +497,42 @@ kbd {
 }
 .te__point-del:hover { color: var(--error); }
 
+/* ── Game / Set / Match banner ────────────────────────────── */
+.te__game-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  margin: 2px 0;
+  border-radius: 4px;
+  opacity: 0.85;
+}
+.te__game-banner--p1 {
+  color: var(--p1);
+  background: var(--p1-bg);
+  border-left: 3px solid var(--p1);
+}
+.te__game-banner--p2 {
+  color: var(--p2);
+  background: var(--p2-bg);
+  border-left: 3px solid var(--p2);
+}
+.te__game-banner--set {
+  opacity: 1;
+  font-size: 0.75rem;
+  padding: 6px 12px;
+}
+.te__game-banner--match {
+  opacity: 1;
+  font-size: 0.8rem;
+  padding: 7px 12px;
+  font-weight: 700;
+}
+
 /* ── Help Modal ───────────────────────────────────────────── */
 .te__modal-backdrop {
   position: fixed;

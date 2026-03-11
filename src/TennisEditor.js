@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Scoreboard from './Scoreboard';
 import PointTimeline from './PointTimeline';
 import VideoExporter from './VideoExporter';
@@ -304,24 +304,52 @@ export default function TennisEditor() {
                 <span className="te__col-label te__col-label--time">Time</span>
               </div>
               <div className="te__points-rows">
-                {points.map((pt, i) => (
-                  <div key={pt.id} className={`te__point-row te__point-row--p${pt.winner}`}>
-                    <span className="te__point-num">#{i + 1}</span>
-                    <span className="te__point-score">
-                      <span className="te__point-game-score">{gameScoreLabel(pt.scoreBefore)}</span>
-                      <span className="te__point-pt-score">{scoreLabel(pt.scoreBefore)}</span>
-                    </span>
-                    <span className="te__point-time">{fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}</span>
-                    <button
-                      className={`te__point-winner te__point-winner--btn te__point-winner--p${pt.winner}`}
-                      onClick={() => editPointWinner(pt.id, pt.winner === 1 ? 2 : 1)}
-                      title="Click to swap winner"
-                    >
-                      {pt.winner === 1 ? p1Name : p2Name} ⇄
-                    </button>
-                    <button className="te__point-del" onClick={() => removePoint(pt.id)} title="Remove">×</button>
-                  </div>
-                ))}
+                {points.map((pt, i) => {
+                  const scoreAfter = addPoint(pt.scoreBefore, pt.winner);
+                  const setCompleted = scoreAfter.sets.length > pt.scoreBefore.sets.length;
+                  const gameWon = setCompleted
+                    || scoreAfter.currentSet[0] !== pt.scoreBefore.currentSet[0]
+                    || scoreAfter.currentSet[1] !== pt.scoreBefore.currentSet[1];
+                  const matchWon = !!scoreAfter.matchWinner;
+                  const winnerName = pt.winner === 1 ? p1Name : p2Name;
+                  let bannerText = null;
+                  if (gameWon) {
+                    if (matchWon) {
+                      bannerText = `${winnerName} wins the match`;
+                    } else if (setCompleted) {
+                      const s = scoreAfter.sets[scoreAfter.sets.length - 1];
+                      bannerText = `${winnerName} wins the set — ${s.p1}–${s.p2}`;
+                    } else {
+                      const [g1, g2] = scoreAfter.currentSet;
+                      bannerText = `${winnerName} wins the game — ${g1}–${g2}`;
+                    }
+                  }
+                  return (
+                    <React.Fragment key={pt.id}>
+                      <div className={`te__point-row te__point-row--p${pt.winner}`}>
+                        <span className="te__point-num">#{i + 1}</span>
+                        <span className="te__point-score">
+                          <span className="te__point-game-score">{gameScoreLabel(pt.scoreBefore)}</span>
+                          <span className="te__point-pt-score">{scoreLabel(pt.scoreBefore)}</span>
+                        </span>
+                        <span className="te__point-time">{fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}</span>
+                        <button
+                          className={`te__point-winner te__point-winner--btn te__point-winner--p${pt.winner}`}
+                          onClick={() => editPointWinner(pt.id, pt.winner === 1 ? 2 : 1)}
+                          title="Click to swap winner"
+                        >
+                          {pt.winner === 1 ? p1Name : p2Name} ⇄
+                        </button>
+                        <button className="te__point-del" onClick={() => removePoint(pt.id)} title="Remove">×</button>
+                      </div>
+                      {bannerText && (
+                        <div className={`te__game-banner te__game-banner--p${pt.winner}${matchWon ? ' te__game-banner--match' : setCompleted ? ' te__game-banner--set' : ''}`}>
+                          {bannerText}
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             </div>
           )}
