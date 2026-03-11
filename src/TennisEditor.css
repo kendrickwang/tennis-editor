@@ -678,19 +678,21 @@ kbd {
   flex-shrink: 0;
 }
 .te__point-menu-btn {
-  background: none;
-  border: none;
-  color: var(--text-3);
-  font-size: 1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border-lit);
+  color: var(--text-2);
+  font-size: 0.9rem;
   line-height: 1;
-  padding: 0 4px;
+  padding: 2px 7px;
   cursor: pointer;
-  border-radius: 4px;
-  transition: color 0.15s, background 0.15s;
+  border-radius: 5px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  letter-spacing: 0.05em;
 }
 .te__point-menu-btn:hover {
   color: var(--text);
-  background: var(--surface-2);
+  background: var(--border-lit);
+  border-color: var(--accent);
 }
 .te__point-menu {
   position: absolute;
