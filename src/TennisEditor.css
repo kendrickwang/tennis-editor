@@ -601,6 +601,36 @@ kbd {
 }
 .te__banner-swap:hover { opacity: 1; }
 
+/* ── Tiebreak start banner ────────────────────────────────── */
+.te__tiebreak-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 12px;
+  margin: 2px 0;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--gold);
+  background: rgba(251, 191, 36, 0.08);
+  border-left: 3px solid var(--gold);
+}
+.te__tiebreak-banner .te__banner-serve {
+  color: var(--gold);
+  opacity: 0.9;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  font-size: 0.68rem;
+}
+.te__tiebreak-banner .te__banner-swap {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
 /* ── Serves-first picker ──────────────────────────────────── */
 .te__serve-picker {
   display: flex;
