@@ -363,6 +363,53 @@ kbd {
   background: rgba(248, 113, 113, 0.08);
 }
 
+/* ── Clear-all confirmation bar ───────────────────────────── */
+.te__clear-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(248, 113, 113, 0.07);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  color: var(--error);
+}
+.te__clear-confirm-btns {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.te__clear-confirm-cancel,
+.te__clear-confirm-ok {
+  padding: 4px 12px;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid;
+  transition: background 0.15s, color 0.15s;
+}
+.te__clear-confirm-cancel {
+  background: none;
+  border-color: var(--border-lit);
+  color: var(--text-2);
+}
+.te__clear-confirm-cancel:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.te__clear-confirm-ok {
+  background: rgba(248, 113, 113, 0.15);
+  border-color: var(--error);
+  color: var(--error);
+}
+.te__clear-confirm-ok:hover {
+  background: rgba(248, 113, 113, 0.3);
+}
+
 .te__points-rows {
   max-height: 260px;
   overflow-y: auto;

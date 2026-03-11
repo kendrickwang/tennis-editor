@@ -28,6 +28,7 @@ export default function TennisEditor() {
   const [points, setPoints] = useState([]);
   const [pendingStart, setPendingStart] = useState(null);
   const [status, setStatus] = useState({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -288,13 +289,23 @@ export default function TennisEditor() {
             <div className="te__points-list">
               <div className="te__points-header">
                 <span>Recorded points</span>
-                <button className="te__clear-btn" onClick={() => {
-                  setPoints([]);
-                  setScore(INITIAL_SCORE);
-                  scoreRef.current = INITIAL_SCORE;
-                  pointsRef.current = [];
-                }}>Clear all</button>
+                <button className="te__clear-btn" onClick={() => setShowClearConfirm(true)}>Clear all</button>
               </div>
+              {showClearConfirm && (
+                <div className="te__clear-confirm">
+                  <span>Clear all {points.length} recorded point{points.length !== 1 ? 's' : ''}? This cannot be undone.</span>
+                  <div className="te__clear-confirm-btns">
+                    <button className="te__clear-confirm-cancel" onClick={() => setShowClearConfirm(false)}>Cancel</button>
+                    <button className="te__clear-confirm-ok" onClick={() => {
+                      setPoints([]);
+                      setScore(INITIAL_SCORE);
+                      scoreRef.current = INITIAL_SCORE;
+                      pointsRef.current = [];
+                      setShowClearConfirm(false);
+                    }}>Yes, clear all</button>
+                  </div>
+                </div>
+              )}
               <div className="te__points-col-headers">
                 <span className="te__point-num"></span>
                 <span className="te__point-score">
