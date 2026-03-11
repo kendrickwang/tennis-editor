@@ -71,7 +71,7 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'],
   // Only show sets that have started (completed or currently active) — hide future slots
   const allSets = Array.from({ length: MAX_SETS }, (_, i) => {
     if (i < score.sets.length) {
-      return { p1: score.sets[i].p1, p2: score.sets[i].p2, status: 'completed' };
+      return { ...score.sets[i], status: 'completed' };
     }
     if (i === score.sets.length && !score.matchWinner) {
       return { p1: score.currentSet[0], p2: score.currentSet[1], status: 'current' };
