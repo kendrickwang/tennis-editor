@@ -171,7 +171,7 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
           onChange={e => setShowScoreboard(e.target.checked)}
           disabled={isRunning}
         />
-        <span>Burn scoreboard into video</span>
+        <span>Export video with scoreboard</span>
         {showScoreboard && <span className="exp__toggle-note">re-encodes — slower</span>}
       </label>
 
