@@ -81,7 +81,7 @@ describe('VideoExporter', () => {
 
   it('renders the scoreboard toggle checkbox', () => {
     render(<VideoExporter videoFile={makeVideoFile()} points={makePoints()} fileName="match.mp4" />);
-    expect(screen.getByRole('checkbox', { name: /burn scoreboard/i })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /export video with scoreboard/i })).toBeInTheDocument();
   });
 
   it('shows "re-encodes" note only when scoreboard toggle is on', () => {
