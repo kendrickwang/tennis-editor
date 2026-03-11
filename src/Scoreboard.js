@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import './Scoreboard.css';
 
-// Returns the display string for one player's current game points
 function playerPtDisplay(p1, p2, isTb, idx) {
   const [mine, theirs] = idx === 0 ? [p1, p2] : [p2, p1];
   if (isTb) return String(mine);
@@ -26,7 +25,7 @@ function displayToPts(val) {
 
 const MAX_SETS = 3;
 
-export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'] }) {
+export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'], serving = 0, onServingChange }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(null);
 
@@ -40,6 +39,7 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'] 
       p1pts: p1d,
       p2pts: p2d,
       isTb: score.isTiebreak,
+      serving,
     });
     setEditing(true);
   }
@@ -57,6 +57,7 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'] 
       if (r1 === 4 && r2 === 4) { r1 = 3; r2 = 3; }
       cg = [r1, r2];
     }
+    onServingChange?.(draft.serving);
     onScoreChange({
       sets,
       currentSet: [parseInt(draft.g1) || 0, parseInt(draft.g2) || 0],
@@ -66,6 +67,17 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'] 
     });
     setEditing(false);
   }
+
+  // Build all set columns: completed sets + current set + future empty slots
+  const allSets = Array.from({ length: MAX_SETS }, (_, i) => {
+    if (i < score.sets.length) {
+      return { p1: score.sets[i].p1, p2: score.sets[i].p2, status: 'completed' };
+    }
+    if (i === score.sets.length && !score.matchWinner) {
+      return { p1: score.currentSet[0], p2: score.currentSet[1], status: 'current' };
+    }
+    return null;
+  });
 
   if (editing) {
     return (
@@ -104,6 +116,21 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'] 
             </div>
           )}
         </div>
+        <div className="sb__edit-field">
+          <label>Serving</label>
+          <div className="sb__edit-pair">
+            <button
+              type="button"
+              className={`sb__serve-btn ${draft.serving === 0 ? 'sb__serve-btn--active' : ''}`}
+              onClick={() => set('serving', 0)}
+            >{names[0].toUpperCase()}</button>
+            <button
+              type="button"
+              className={`sb__serve-btn ${draft.serving === 1 ? 'sb__serve-btn--active' : ''}`}
+              onClick={() => set('serving', 1)}
+            >{names[1].toUpperCase()}</button>
+          </div>
+        </div>
         <label className="sb__edit-check">
           <input type="checkbox" checked={draft.isTb} onChange={e => set('isTb', e.target.checked)} />
           Tiebreak
@@ -116,19 +143,18 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'] 
     );
   }
 
-  // Set columns: always render MAX_SETS slots
-  const setCols = Array.from({ length: MAX_SETS }, (_, i) => score.sets[i] ?? null);
-
   return (
     <div className="sb">
       <table className="sb__table">
         <thead>
           <tr className="sb__head-row">
+            <th className="sb__th sb__th--dot"></th>
             <th className="sb__th sb__th--name"></th>
-            {setCols.map((_, i) => (
-              <th key={i} className="sb__th sb__th--num">{i + 1}</th>
+            {allSets.map((s, i) => (
+              <th key={i} className={`sb__th sb__th--set ${s?.status === 'current' ? 'sb__th--current-set' : ''}`}>
+                {i + 1}
+              </th>
             ))}
-            <th className="sb__th sb__th--num">Gm</th>
             <th className="sb__th sb__th--pt">{score.isTiebreak ? 'TB' : 'Pt'}</th>
             <th className="sb__th sb__th--btn"></th>
           </tr>
@@ -136,24 +162,30 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'] 
         <tbody>
           {[0, 1].map(pi => {
             const pt = playerPtDisplay(score.currentGame[0], score.currentGame[1], score.isTiebreak, pi);
+            const isServing = serving === pi;
             return (
               <tr key={pi} className="sb__row">
+                <td
+                  className={`sb__td sb__td--dot ${isServing ? 'sb__td--serving' : ''}`}
+                  onClick={() => onServingChange?.(pi)}
+                  title="Click to set server"
+                >
+                  ●
+                </td>
                 <td className={`sb__td sb__td--name ${score.matchWinner === pi + 1 ? 'sb__td--winner' : ''}`}>
                   {names[pi].toUpperCase()}
                 </td>
-                {setCols.map((s, si) => {
-                  const mine   = s ? (pi === 0 ? s.p1 : s.p2) : null;
-                  const theirs = s ? (pi === 0 ? s.p2 : s.p1) : null;
-                  const won    = s != null && mine > theirs;
+                {allSets.map((s, si) => {
+                  const isCurrent = s?.status === 'current';
+                  const mine   = s !== null ? (pi === 0 ? s.p1 : s.p2) : null;
+                  const theirs = s !== null ? (pi === 0 ? s.p2 : s.p1) : null;
+                  const isSetWon = s?.status === 'completed' && mine > theirs;
                   return (
-                    <td key={si} className={`sb__td sb__td--num ${won ? 'sb__td--set-win' : ''} ${s == null ? 'sb__td--empty' : ''}`}>
-                      {s != null ? mine : '–'}
+                    <td key={si} className={`sb__td sb__td--set ${isCurrent ? 'sb__td--current-set' : ''} ${s === null ? 'sb__td--empty-set' : ''} ${isSetWon ? 'sb__td--set-win' : ''}`}>
+                      {s !== null ? mine : ''}
                     </td>
                   );
                 })}
-                <td className="sb__td sb__td--num sb__td--games">
-                  {score.currentSet[pi]}
-                </td>
                 <td className={`sb__td sb__td--pt ${pt === 'Ad' ? 'sb__td--adv' : ''}`}>
                   {pt}
                 </td>

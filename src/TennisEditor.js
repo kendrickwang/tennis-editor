@@ -24,6 +24,7 @@ export default function TennisEditor() {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [score, setScore] = useState(INITIAL_SCORE);
+  const [serving, setServing] = useState(0); // 0 = P1, 1 = P2
   const [points, setPoints] = useState([]);
   const [pendingStart, setPendingStart] = useState(null);
   const [status, setStatus] = useState({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
@@ -59,6 +60,7 @@ export default function TennisEditor() {
     setFileName(file.name);
     setDuration(0);
     setScore(INITIAL_SCORE);
+    setServing(0);
     setPoints([]);
     setPendingStart(null);
     setStatus({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
@@ -194,6 +196,8 @@ export default function TennisEditor() {
                 score={score}
                 onScoreChange={newScore => { setScore(newScore); scoreRef.current = newScore; }}
                 names={[PLAYER_1_NAME, PLAYER_2_NAME]}
+                serving={serving}
+                onServingChange={setServing}
               />
             </div>
           </div>
@@ -220,6 +224,8 @@ export default function TennisEditor() {
             videoFile={videoFile}
             points={points}
             fileName={fileName}
+            names={[PLAYER_1_NAME, PLAYER_2_NAME]}
+            serving={serving}
           />
 
           {/* Point timeline */}
