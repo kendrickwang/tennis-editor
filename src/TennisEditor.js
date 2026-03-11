@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Scoreboard from './Scoreboard';
 import PointTimeline from './PointTimeline';
 import VideoExporter from './VideoExporter';
-import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel, recomputeScores } from './tennisScore';
+import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel, recomputeScores, computeServer } from './tennisScore';
 import './TennisEditor.css';
 
 function fmtTime(s) {
@@ -24,7 +24,7 @@ export default function TennisEditor() {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [score, setScore] = useState(INITIAL_SCORE);
-  const [serving, setServing] = useState(0); // 0 = P1, 1 = P2
+  const [initialServer, setInitialServer] = useState(0); // 0 = P1 serves first, 1 = P2 serves first
   const [points, setPoints] = useState([]);
   const [pendingStart, setPendingStart] = useState(null);
   const [status, setStatus] = useState({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
@@ -39,6 +39,7 @@ export default function TennisEditor() {
   const pointsRef = useRef([]);
   const p1NameRef = useRef('Player 1');
   const p2NameRef = useRef('Player 2');
+  const initialServerRef = useRef(0);
 
   // Keep refs in sync with state
   useEffect(() => { scoreRef.current = score; }, [score]);
@@ -46,6 +47,10 @@ export default function TennisEditor() {
   useEffect(() => { pointsRef.current = points; }, [points]);
   useEffect(() => { p1NameRef.current = p1Name; }, [p1Name]);
   useEffect(() => { p2NameRef.current = p2Name; }, [p2Name]);
+  useEffect(() => { initialServerRef.current = initialServer; }, [initialServer]);
+
+  // Derive current serving from score + initialServer (auto-computed, no extra state)
+  const serving = computeServer(score, initialServer);
 
   // Video time tracking
   useEffect(() => {
@@ -65,7 +70,7 @@ export default function TennisEditor() {
     setFileName(file.name);
     setDuration(0);
     setScore(INITIAL_SCORE);
-    setServing(0);
+    setInitialServer(0);
     setPoints([]);
     setPendingStart(null);
     setStatus({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
@@ -124,7 +129,7 @@ export default function TennisEditor() {
 
     const winner = e.code === 'KeyE' ? 1 : 2;
     const newPt = { id: Date.now(), startTime, endTime, winner };
-    const { points: recomputed, finalScore } = recomputeScores([...pointsRef.current, newPt]);
+    const { points: recomputed, finalScore } = recomputeScores([...pointsRef.current, newPt], initialServerRef.current);
 
     setPoints(recomputed);
     setScore(finalScore);
@@ -155,7 +160,7 @@ export default function TennisEditor() {
   }
 
   function removePoint(id) {
-    const { points: recomputed, finalScore } = recomputeScores(points.filter(p => p.id !== id));
+    const { points: recomputed, finalScore } = recomputeScores(points.filter(p => p.id !== id), initialServer);
     setPoints(recomputed);
     setScore(finalScore);
     scoreRef.current = finalScore;
@@ -163,12 +168,34 @@ export default function TennisEditor() {
 
   function editPointWinner(id, newWinner) {
     const { points: recomputed, finalScore } = recomputeScores(
-      points.map(p => p.id === id ? { ...p, winner: newWinner } : p)
+      points.map(p => p.id === id ? { ...p, winner: newWinner } : p),
+      initialServer
     );
     setPoints(recomputed);
     setScore(finalScore);
     scoreRef.current = finalScore;
   }
+
+  function overridePointServing(id) {
+    // Toggle servingManual: if already overridden, clear it; otherwise set to opposite of current
+    const pt = points.find(p => p.id === id);
+    const next = pt.servingManual !== undefined ? undefined : 1 - pt.serving;
+    const updated = points.map(p => p.id === id ? { ...p, servingManual: next } : p);
+    const { points: recomputed, finalScore } = recomputeScores(updated, initialServer);
+    setPoints(recomputed);
+    setScore(finalScore);
+    scoreRef.current = finalScore;
+  }
+
+  // Recompute all points whenever initialServer changes
+  useEffect(() => {
+    if (points.length === 0) return;
+    const { points: recomputed, finalScore } = recomputeScores(points, initialServer);
+    setPoints(recomputed);
+    setScore(finalScore);
+    scoreRef.current = finalScore;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialServer]);
 
   // ── Render ─────────────────────────────────────────────────
   return (
@@ -204,7 +231,7 @@ export default function TennisEditor() {
               onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
           </div>
 
-          {/* Player names */}
+          {/* Player names + first server */}
           <div className="te__names">
             <label className="te__name-field te__name-field--p1">
               <span>Player 1</span>
@@ -227,6 +254,17 @@ export default function TennisEditor() {
               />
             </label>
           </div>
+          <div className="te__serve-picker">
+            <span className="te__serve-picker-label">Serves first</span>
+            <button
+              className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
+              onClick={() => setInitialServer(0)}
+            >🎾 {p1Name}</button>
+            <button
+              className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
+              onClick={() => setInitialServer(1)}
+            >🎾 {p2Name}</button>
+          </div>
 
           {/* Video + scoreboard overlay */}
           <div className="te__video-wrap">
@@ -243,7 +281,7 @@ export default function TennisEditor() {
                 onScoreChange={newScore => { setScore(newScore); scoreRef.current = newScore; }}
                 names={[p1Name, p2Name]}
                 serving={serving}
-                onServingChange={setServing}
+                onServingChange={s => { if (s !== serving) setInitialServer(1 - initialServer); }}
               />
             </div>
           </div>
@@ -335,6 +373,9 @@ export default function TennisEditor() {
                       bannerText = `${winnerName} wins the game — ${g1}–${g2}`;
                     }
                   }
+                  const isManualServe = pt.servingManual !== undefined;
+                  const nextServer = gameWon && !matchWon ? computeServer(scoreAfter, initialServer) : null;
+                  const nextServerName = nextServer === 0 ? p1Name : p2Name;
                   return (
                     <React.Fragment key={pt.id}>
                       <div className={`te__point-row te__point-row--p${pt.winner}`} onClick={() => seekTo(pt.startTime)} style={{ cursor: 'pointer' }}>
@@ -344,6 +385,11 @@ export default function TennisEditor() {
                           <span className="te__point-pt-score">{scoreLabel(pt.scoreBefore)}</span>
                         </span>
                         <span className="te__point-time">{fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}</span>
+                        <button
+                          className={`te__serve-dot te__serve-dot--p${pt.serving + 1}${isManualServe ? ' te__serve-dot--manual' : ''}`}
+                          onClick={e => { e.stopPropagation(); overridePointServing(pt.id); }}
+                          title={`${pt.serving === 0 ? p1Name : p2Name} serving${isManualServe ? ' (manual override — click to clear)' : ' (click to override)'}`}
+                        >●</button>
                         <button
                           className={`te__point-winner te__point-winner--btn te__point-winner--p${pt.winner}`}
                           onClick={e => { e.stopPropagation(); editPointWinner(pt.id, pt.winner === 1 ? 2 : 1); }}
@@ -355,7 +401,17 @@ export default function TennisEditor() {
                       </div>
                       {bannerText && (
                         <div className={`te__game-banner te__game-banner--p${pt.winner}${matchWon ? ' te__game-banner--match' : setCompleted ? ' te__game-banner--set' : ''}`}>
-                          {bannerText}
+                          <span>{bannerText}</span>
+                          {!matchWon && (
+                            <span className="te__banner-serve">
+                              🎾 {nextServerName} to serve
+                              <button
+                                className="te__banner-swap"
+                                onClick={() => setInitialServer(1 - initialServer)}
+                                title="Swap who serves next"
+                              >↺ swap</button>
+                            </span>
+                          )}
                         </div>
                       )}
                     </React.Fragment>

@@ -579,6 +579,88 @@ kbd {
   padding: 7px 12px;
   font-weight: 700;
 }
+.te__game-banner { justify-content: space-between; }
+.te__banner-serve {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+.te__banner-swap {
+  background: none;
+  border: 1px solid currentColor;
+  color: inherit;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s;
+}
+.te__banner-swap:hover { opacity: 1; }
+
+/* ── Serves-first picker ──────────────────────────────────── */
+.te__serve-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.te__serve-picker-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.te__serve-pill {
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-lit);
+  background: none;
+  color: var(--text-2);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.te__serve-pill--p1.te__serve-pill--active {
+  background: var(--p1-bg);
+  border-color: var(--p1-border);
+  color: var(--p1);
+}
+.te__serve-pill--p2.te__serve-pill--active {
+  background: var(--p2-bg);
+  border-color: var(--p2-border);
+  color: var(--p2);
+}
+.te__serve-pill:hover:not(.te__serve-pill--active) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* ── Serving dot on point row ─────────────────────────────── */
+.te__serve-dot {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.55rem;
+  padding: 0 2px;
+  line-height: 1;
+  border-radius: 50%;
+  transition: opacity 0.15s, transform 0.15s;
+  flex-shrink: 0;
+}
+.te__serve-dot--p1 { color: var(--p1); }
+.te__serve-dot--p2 { color: var(--p2); }
+.te__serve-dot--manual {
+  outline: 1px dashed currentColor;
+  outline-offset: 2px;
+}
+.te__serve-dot:hover { opacity: 0.7; transform: scale(1.3); }
 
 /* ── Help Modal ───────────────────────────────────────────── */
 .te__modal-backdrop {

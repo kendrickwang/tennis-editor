@@ -106,16 +106,37 @@ export function addPoint(score, winner) {
   return { sets, currentSet, currentGame, isTiebreak, matchWinner: null };
 }
 
+// Returns 0 (P1) or 1 (P2) — who is serving for a given score state.
+// initialServer is 0|1 — who served the very first game of the match.
+// Handles normal alternation and tiebreak rotation (1 then every 2 points).
+export function computeServer(scoreBefore, initialServer) {
+  const totalGames =
+    scoreBefore.sets.reduce((s, set) => s + set.p1 + set.p2, 0) +
+    scoreBefore.currentSet[0] + scoreBefore.currentSet[1];
+  const gameServer = (initialServer + totalGames) % 2;
+  if (!scoreBefore.isTiebreak) return gameServer;
+  // Tiebreak: first point served by gameServer, then other player for 2, then alternate every 2
+  const tbPoints = scoreBefore.currentGame[0] + scoreBefore.currentGame[1];
+  if (tbPoints === 0) return gameServer;
+  const offset = Math.floor((tbPoints + 1) / 2) % 2;
+  return offset === 0 ? gameServer : 1 - gameServer;
+}
+
 // Re-sort points by startTime and recompute every scoreBefore from scratch.
 // Call this after any mutation (insert, delete, edit winner) to keep scores consistent.
 // Accepts points with or without scoreBefore — always overwrites it.
-export function recomputeScores(points) {
+// initialServer: 0|1 — who served the first game; used to stamp serving on each point.
+// A point with servingManual set will use that value instead of auto-computed.
+export function recomputeScores(points, initialServer = 0) {
   const sorted = [...points].sort((a, b) => a.startTime - b.startTime);
   let score = INITIAL_SCORE;
   const recomputed = sorted.map(pt => {
     const scoreBefore = score;
+    const serving = pt.servingManual !== undefined
+      ? pt.servingManual
+      : computeServer(scoreBefore, initialServer);
     score = addPoint(score, pt.winner);
-    return { ...pt, scoreBefore };
+    return { ...pt, scoreBefore, serving };
   });
   return { points: recomputed, finalScore: score };
 }
