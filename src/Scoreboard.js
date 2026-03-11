@@ -170,6 +170,9 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'],
                   return (
                     <td key={si} className={`sb__td sb__td--set ${isCurrent ? 'sb__td--current-set' : ''} ${s === null ? 'sb__td--empty-set' : ''} ${isSetWon ? 'sb__td--set-win' : ''}`}>
                       {s !== null ? mine : ''}
+                      {s?.tiebreak !== undefined && mine < theirs && (
+                        <sup className="sb__tb-score">{s.tiebreak}</sup>
+                      )}
                     </td>
                   );
                 })}
