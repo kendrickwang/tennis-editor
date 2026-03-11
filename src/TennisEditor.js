@@ -335,7 +335,7 @@ function HelpModal({ names, onAccept }) {
           </li>
           <li>
             <span className="te__modal-step-num">2</span>
-            <span>When a rally starts, press <kbd>S</kbd> to mark the beginning</span>
+            <span>When a rally starts, press <kbd>S</kbd> to mark the beginning of each point</span>
           </li>
           <li>
             <span className="te__modal-step-num">3</span>
