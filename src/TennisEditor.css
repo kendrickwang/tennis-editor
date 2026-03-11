@@ -672,25 +672,63 @@ kbd {
   color: var(--text);
 }
 
-/* ── Serving dot on point row ─────────────────────────────── */
-.te__serve-dot {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.55rem;
-  padding: 0 2px;
-  line-height: 1;
-  border-radius: 50%;
-  transition: opacity 0.15s, transform 0.15s;
+/* ── 3-dot point menu ─────────────────────────────────────── */
+.te__point-menu-wrap {
+  position: relative;
   flex-shrink: 0;
 }
-.te__serve-dot--p1 { color: var(--p1); }
-.te__serve-dot--p2 { color: var(--p2); }
-.te__serve-dot--manual {
-  outline: 1px dashed currentColor;
-  outline-offset: 2px;
+.te__point-menu-btn {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
 }
-.te__serve-dot:hover { opacity: 0.7; transform: scale(1.3); }
+.te__point-menu-btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.te__point-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 100;
+  background: var(--surface-2);
+  border: 1px solid var(--border-lit);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  min-width: 180px;
+  overflow: hidden;
+}
+.te__point-menu-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 0.72rem;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--border);
+}
+.te__point-menu-dot { font-size: 0.55rem; }
+.te__point-menu-dot--p1 { color: var(--p1); }
+.te__point-menu-dot--p2 { color: var(--p2); }
+.te__point-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.te__point-menu-item:hover { background: var(--border); }
 
 /* ── Help Modal ───────────────────────────────────────────── */
 .te__modal-backdrop {

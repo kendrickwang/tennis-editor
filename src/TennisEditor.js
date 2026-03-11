@@ -29,6 +29,7 @@ export default function TennisEditor() {
   const [pendingStart, setPendingStart] = useState(null);
   const [status, setStatus] = useState({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -206,6 +207,14 @@ export default function TennisEditor() {
     setScore(finalScore);
     scoreRef.current = finalScore;
   }
+
+  // Close point menu on any outside click
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => setOpenMenuId(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openMenuId]);
 
   // Recompute all points whenever initialServer changes
   useEffect(() => {
@@ -406,11 +415,27 @@ export default function TennisEditor() {
                           <span className="te__point-pt-score">{scoreLabel(pt.scoreBefore)}</span>
                         </span>
                         <span className="te__point-time">{fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}</span>
-                        <button
-                          className={`te__serve-dot te__serve-dot--p${pt.serving + 1}${isManualServe ? ' te__serve-dot--manual' : ''}`}
-                          onClick={e => { e.stopPropagation(); overridePointServing(pt.id); }}
-                          title={`${pt.serving === 0 ? p1Name : p2Name} serving${isManualServe ? ' (manual override — click to clear)' : ' (click to override)'}`}
-                        >●</button>
+                        <span className="te__point-menu-wrap">
+                          <button
+                            className="te__point-menu-btn"
+                            onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === pt.id ? null : pt.id); }}
+                            title="More options"
+                          >⋮</button>
+                          {openMenuId === pt.id && (
+                            <div className="te__point-menu" onClick={e => e.stopPropagation()}>
+                              <div className="te__point-menu-info">
+                                <span className={`te__point-menu-dot te__point-menu-dot--p${pt.serving + 1}`}>●</span>
+                                {pt.serving === 0 ? p1Name : p2Name} serving{isManualServe ? ' ✎' : ''}
+                              </div>
+                              <button
+                                className="te__point-menu-item"
+                                onClick={() => { overridePointServing(pt.id); setOpenMenuId(null); }}
+                              >
+                                {isManualServe ? '↺ Clear server override' : '⇄ Switch server'}
+                              </button>
+                            </div>
+                          )}
+                        </span>
                         <button
                           className={`te__point-winner te__point-winner--btn te__point-winner--p${pt.winner}`}
                           onClick={e => { e.stopPropagation(); editPointWinner(pt.id, pt.winner === 1 ? 2 : 1); }}
