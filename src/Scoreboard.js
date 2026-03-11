@@ -68,7 +68,7 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'],
     setEditing(false);
   }
 
-  // Build all set columns: completed sets + current set + future empty slots
+  // Only show sets that have started (completed or currently active) — hide future slots
   const allSets = Array.from({ length: MAX_SETS }, (_, i) => {
     if (i < score.sets.length) {
       return { p1: score.sets[i].p1, p2: score.sets[i].p2, status: 'completed' };
@@ -77,7 +77,7 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'],
       return { p1: score.currentSet[0], p2: score.currentSet[1], status: 'current' };
     }
     return null;
-  });
+  }).filter(s => s !== null);
 
   if (editing) {
     return (
@@ -146,19 +146,6 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'],
   return (
     <div className="sb">
       <table className="sb__table">
-        <thead>
-          <tr className="sb__head-row">
-            <th className="sb__th sb__th--dot"></th>
-            <th className="sb__th sb__th--name"></th>
-            {allSets.map((s, i) => (
-              <th key={i} className={`sb__th sb__th--set ${s?.status === 'current' ? 'sb__th--current-set' : ''}`}>
-                {i + 1}
-              </th>
-            ))}
-            <th className="sb__th sb__th--pt">{score.isTiebreak ? 'TB' : 'Pt'}</th>
-            <th className="sb__th sb__th--btn"></th>
-          </tr>
-        </thead>
         <tbody>
           {[0, 1].map(pi => {
             const pt = playerPtDisplay(score.currentGame[0], score.currentGame[1], score.isTiebreak, pi);

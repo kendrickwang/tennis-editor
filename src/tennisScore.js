@@ -104,3 +104,17 @@ export function addPoint(score, winner) {
 
   return { sets, currentSet, currentGame, isTiebreak, matchWinner: null };
 }
+
+// Re-sort points by startTime and recompute every scoreBefore from scratch.
+// Call this after any mutation (insert, delete, edit winner) to keep scores consistent.
+// Accepts points with or without scoreBefore — always overwrites it.
+export function recomputeScores(points) {
+  const sorted = [...points].sort((a, b) => a.startTime - b.startTime);
+  let score = INITIAL_SCORE;
+  const recomputed = sorted.map(pt => {
+    const scoreBefore = score;
+    score = addPoint(score, pt.winner);
+    return { ...pt, scoreBefore };
+  });
+  return { points: recomputed, finalScore: score };
+}

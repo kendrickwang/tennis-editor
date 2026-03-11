@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Scoreboard from './Scoreboard';
 import PointTimeline from './PointTimeline';
 import VideoExporter from './VideoExporter';
-import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel } from './tennisScore';
+import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel, recomputeScores } from './tennisScore';
 import './TennisEditor.css';
 
 function fmtTime(s) {
@@ -122,19 +122,21 @@ export default function TennisEditor() {
     if (endTime < startTime) [startTime, endTime] = [endTime, startTime];
 
     const winner = e.code === 'KeyE' ? 1 : 2;
-    const scoreBefore = scoreRef.current;
-    const scoreAfter = addPoint(scoreBefore, winner);
-    const newPt = { id: Date.now(), startTime, endTime, winner, scoreBefore };
+    const newPt = { id: Date.now(), startTime, endTime, winner };
+    const { points: recomputed, finalScore } = recomputeScores([...pointsRef.current, newPt]);
 
-    setPoints(prev => [...prev, newPt]);
-    setScore(scoreAfter);
-    scoreRef.current = scoreAfter;
+    setPoints(recomputed);
+    setScore(finalScore);
+    scoreRef.current = finalScore;
     pendingStartRef.current = null;
     setPendingStart(null);
 
-    const label = scoreLabel(scoreAfter);
+    // Find this point's scoreBefore to show the score at that moment in the video
+    const inserted = recomputed.find(p => p.id === newPt.id);
+    const scoreAfterThisPoint = addPoint(inserted.scoreBefore, winner);
+    const label = scoreLabel(scoreAfterThisPoint);
     setStatus({
-      text: `${winner === 1 ? p1NameRef.current : p2NameRef.current} wins · Score: ${label} · Games: ${scoreAfter.currentSet[0]}–${scoreAfter.currentSet[1]}`,
+      text: `${winner === 1 ? p1NameRef.current : p2NameRef.current} wins · Score: ${label} · Games: ${scoreAfterThisPoint.currentSet[0]}–${scoreAfterThisPoint.currentSet[1]}`,
       kind: 'success',
     });
   }, []); // stable — reads from refs only
@@ -152,7 +154,19 @@ export default function TennisEditor() {
   }
 
   function removePoint(id) {
-    setPoints(prev => prev.filter(p => p.id !== id));
+    const { points: recomputed, finalScore } = recomputeScores(points.filter(p => p.id !== id));
+    setPoints(recomputed);
+    setScore(finalScore);
+    scoreRef.current = finalScore;
+  }
+
+  function editPointWinner(id, newWinner) {
+    const { points: recomputed, finalScore } = recomputeScores(
+      points.map(p => p.id === id ? { ...p, winner: newWinner } : p)
+    );
+    setPoints(recomputed);
+    setScore(finalScore);
+    scoreRef.current = finalScore;
   }
 
   // ── Render ─────────────────────────────────────────────────
@@ -278,7 +292,16 @@ export default function TennisEditor() {
                   setPoints([]);
                   setScore(INITIAL_SCORE);
                   scoreRef.current = INITIAL_SCORE;
+                  pointsRef.current = [];
                 }}>Clear all</button>
+              </div>
+              <div className="te__points-col-headers">
+                <span className="te__point-num"></span>
+                <span className="te__point-score">
+                  <span className="te__col-label">Game</span>
+                  <span className="te__col-label">Point</span>
+                </span>
+                <span className="te__col-label te__col-label--time">Time</span>
               </div>
               <div className="te__points-rows">
                 {points.map((pt, i) => (
@@ -289,7 +312,13 @@ export default function TennisEditor() {
                       <span className="te__point-pt-score">{scoreLabel(pt.scoreBefore)}</span>
                     </span>
                     <span className="te__point-time">{fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}</span>
-                    <span className="te__point-winner">{pt.winner === 1 ? p1Name : p2Name}</span>
+                    <button
+                      className={`te__point-winner te__point-winner--btn te__point-winner--p${pt.winner}`}
+                      onClick={() => editPointWinner(pt.id, pt.winner === 1 ? 2 : 1)}
+                      title="Click to swap winner"
+                    >
+                      {pt.winner === 1 ? p1Name : p2Name} ⇄
+                    </button>
                     <button className="te__point-del" onClick={() => removePoint(pt.id)} title="Remove">×</button>
                   </div>
                 ))}

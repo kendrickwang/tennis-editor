@@ -376,6 +376,28 @@ kbd {
   border-radius: 2px;
 }
 
+/* ── Points column headers ────────────────────────────────── */
+.te__points-col-headers {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.35rem 1.125rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.te__col-label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+}
+
+.te__col-label--time {
+  flex: 1;
+}
+
 /* ── Point row ────────────────────────────────────────────── */
 .te__point-row {
   display: flex;
@@ -443,12 +465,20 @@ kbd {
   letter-spacing: 0.04em;
   flex-shrink: 0;
 }
-.te__point-row--p1 .te__point-winner {
+.te__point-winner--btn {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.te__point-winner--btn:hover { opacity: 0.75; transform: scale(1.05); }
+.te__point-winner--btn:active { transform: scale(0.97); }
+.te__point-winner--p1 {
   background: var(--p1-bg);
   color: var(--p1);
   border: 1px solid var(--p1-border);
 }
-.te__point-row--p2 .te__point-winner {
+.te__point-winner--p2 {
   background: var(--p2-bg);
   color: var(--p2);
   border: 1px solid var(--p2-border);
