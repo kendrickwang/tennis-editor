@@ -1,146 +1,170 @@
 /* ══════════════════════════════════════════════════════════
-   Premium broadcast-style scoreboard
+   US Open Broadcast Scoreboard
    ══════════════════════════════════════════════════════════ */
 
 .sb {
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  background: rgba(6, 7, 16, 0.88);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  font-family: 'Impact', 'Arial Narrow', 'Franklin Gothic Medium', 'Haettenschweiler', sans-serif;
+  background: #0a1929;
+  border-radius: 3px;
   overflow: hidden;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  min-width: 260px;
+  display: inline-block;
+  width: 340px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.85);
 }
 
-/* ── Table base ─────────────────────────────────────────── */
+/* ── Table ───────────────────────────────────────────────── */
 .sb__table {
   border-collapse: collapse;
-  width: 100%;
+  width: 340px;
 }
 
-/* Header row */
+/* ── Header row ──────────────────────────────────────────── */
 .sb__head-row {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.5);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .sb__th {
-  padding: 5px 0 4px;
-  font-size: 0.55rem;
+  padding: 4px 0 3px;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.28);
   text-align: center;
 }
-.sb__th--name { text-align: left; padding-left: 12px; width: 96px; }
-.sb__th--num  { width: 32px; }
-.sb__th--pt   { width: 44px; }
+
+.sb__th--dot  { width: 24px; }
+.sb__th--name { text-align: left; padding-left: 6px; }
+.sb__th--set  { width: 40px; }
+.sb__th--pt   { width: 58px; border-left: 1px solid rgba(255, 255, 255, 0.08); }
 .sb__th--btn  { width: 28px; }
 
-/* ── Player rows ────────────────────────────────────────── */
+.sb__th--current-set {
+  background: rgba(255, 215, 0, 0.18);
+  color: #FFD700;
+}
+
+/* ── Player rows ─────────────────────────────────────────── */
 .sb__row + .sb__row {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .sb__td {
-  padding: 8px 0;
+  padding: 11px 0;
   text-align: center;
   vertical-align: middle;
-  font-size: 0.92rem;
   color: #ffffff;
+}
+
+/* Serving dot */
+.sb__td--dot {
+  width: 24px;
+  font-size: 0.55rem;
+  color: transparent;
+  cursor: pointer;
+  padding: 0 0 0 8px;
+  user-select: none;
+  transition: color 0.1s;
+}
+.sb__td--serving {
+  color: #FFD700;
+}
+.sb__td--dot:hover {
+  color: rgba(255, 215, 0, 0.35);
+}
+.sb__td--serving:hover {
+  color: #FFD700;
 }
 
 /* Player name */
 .sb__td--name {
   text-align: left;
-  padding-left: 12px;
-  padding-right: 8px;
-  font-size: 0.76rem;
-  font-weight: 800;
+  padding: 11px 14px 11px 6px;
+  font-size: 1.1rem;
+  font-weight: 900;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.9);
+  color: #ffffff;
   white-space: nowrap;
 }
 .sb__td--winner {
-  color: #FBBF24;
+  color: #FFD700;
 }
 
-/* Set score numbers */
-.sb__td--num {
-  font-size: 0.88rem;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.45);
+/* Set score cells */
+.sb__td--set {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  width: 40px;
 }
 .sb__td--set-win {
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.95);
-}
-.sb__td--empty {
-  color: rgba(255, 255, 255, 0.15);
-  font-size: 0.75rem;
+  font-weight: 900;
+  color: #ffffff;
 }
 
-/* Current set game count */
-.sb__td--games {
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.8);
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+/* Current (active) set — yellow highlight */
+.sb__td--current-set {
+  background: #FFD700;
+  color: #000000 !important;
+  font-weight: 900;
 }
 
-/* Current game points — the money stat */
+/* Future empty set slot */
+.sb__td--empty-set {
+  color: rgba(255, 255, 255, 0.1);
+  font-size: 0.7rem;
+}
+
+/* Game points — right column, larger */
 .sb__td--pt {
-  font-size: 1rem;
-  font-weight: 800;
-  color: #FBBF24;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #ffffff;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
+  width: 58px;
   letter-spacing: -0.01em;
 }
 .sb__td--adv {
-  color: #818CF8;
+  color: #FFD700;
 }
 
 /* Edit button */
 .sb__td--btn {
   vertical-align: middle;
-  border-left: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 0 2px;
 }
 .sb__edit-btn {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.14);
   cursor: pointer;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto;
-  border-radius: 4px;
+  border-radius: 3px;
   transition: color 0.15s, background 0.15s;
 }
 .sb__edit-btn:hover {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.6);
   background: rgba(255, 255, 255, 0.08);
 }
 
 /* Match winner banner */
 .sb__winner {
-  background: rgba(251, 191, 36, 0.12);
-  border-top: 1px solid rgba(251, 191, 36, 0.25);
-  color: #FBBF24;
+  background: rgba(255, 215, 0, 0.1);
+  border-top: 1px solid rgba(255, 215, 0, 0.25);
+  color: #FFD700;
   text-align: center;
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 5px 10px;
+  padding: 6px 14px;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -152,21 +176,21 @@
   flex-direction: column;
   gap: 11px;
   padding: 14px 16px 16px;
-  min-width: 240px;
-  background: rgba(6, 7, 16, 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+  min-width: 260px;
+  background: #0a1929;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.8);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
 }
 
 .sb__edit-title {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.28);
+  font-family: 'Impact', 'Arial Narrow', sans-serif;
 }
 
 .sb__edit-field {
@@ -175,29 +199,28 @@
   gap: 5px;
 }
 .sb__edit-field label {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.3);
 }
 .sb__edit-field input,
 .sb__edit-field select {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
   color: #ffffff;
   font-size: 0.84rem;
   padding: 6px 9px;
   outline: none;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s;
 }
 .sb__edit-field input:focus,
 .sb__edit-field select:focus {
-  border-color: rgba(99, 102, 241, 0.6);
-  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(255, 215, 0, 0.45);
 }
-.sb__edit-field select option { background: #0D0F1E; }
+.sb__edit-field select option { background: #0a1929; }
 
 .sb__edit-pair {
   display: flex;
@@ -207,14 +230,34 @@
 .sb__edit-pair input,
 .sb__edit-pair select { width: 66px; }
 
-.sb__dash { color: rgba(255, 255, 255, 0.25); font-size: 0.9rem; }
+.sb__dash { color: rgba(255, 255, 255, 0.22); font-size: 0.9rem; }
+
+/* Serving selector buttons */
+.sb__serve-btn {
+  flex: 1;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sb__serve-btn--active {
+  background: rgba(255, 215, 0, 0.12);
+  border-color: rgba(255, 215, 0, 0.4);
+  color: #FFD700;
+}
 
 .sb__edit-check {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.4);
   cursor: pointer;
 }
 .sb__edit-check input { width: auto; }
@@ -228,15 +271,14 @@
   flex: 1;
   padding: 7px 0;
   border: none;
-  border-radius: 7px;
-  font-size: 0.73rem;
+  border-radius: 5px;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
+  transition: opacity 0.15s;
 }
-.sb__btn:hover { opacity: 0.88; }
-.sb__btn:active { transform: scale(0.97); }
-.sb__btn--save   { background: #6366F1; color: #fff; }
-.sb__btn--cancel { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.45); }
+.sb__btn:hover { opacity: 0.85; }
+.sb__btn--save   { background: #FFD700; color: #000000; }
+.sb__btn--cancel { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.38); }
