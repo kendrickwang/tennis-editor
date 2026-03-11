@@ -1,14 +1,20 @@
 /* ══════════════════════════════════════════════════════════
-   US Open-style scoreboard — solid background, zero ambiguity
+   Premium broadcast-style scoreboard
    ══════════════════════════════════════════════════════════ */
 
 .sb {
-  font-family: 'Arial', 'Helvetica Neue', sans-serif;
-  background: #07142b;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: rgba(6, 7, 16, 0.88);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  min-width: 260px;
 }
 
 /* ── Table base ─────────────────────────────────────────── */
@@ -19,113 +25,122 @@
 
 /* Header row */
 .sb__head-row {
-  background: #03091a;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .sb__th {
-  padding: 4px 0 3px;
-  font-size: 0.58rem;
+  padding: 5px 0 4px;
+  font-size: 0.55rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.3);
   text-align: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
-.sb__th--name { text-align: left; padding-left: 10px; width: 88px; }
-.sb__th--num  { width: 30px; }
-.sb__th--pt   { width: 40px; }
-.sb__th--btn  { width: 26px; }
+.sb__th--name { text-align: left; padding-left: 12px; width: 96px; }
+.sb__th--num  { width: 32px; }
+.sb__th--pt   { width: 44px; }
+.sb__th--btn  { width: 28px; }
 
 /* ── Player rows ────────────────────────────────────────── */
 .sb__row + .sb__row {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .sb__td {
-  padding: 7px 0;
+  padding: 8px 0;
   text-align: center;
   vertical-align: middle;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   color: #ffffff;
 }
 
 /* Player name */
 .sb__td--name {
   text-align: left;
-  padding-left: 10px;
-  padding-right: 6px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #c8d8f0;
+  padding-left: 12px;
+  padding-right: 8px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
 }
 .sb__td--winner {
-  color: #facc15;
+  color: #FBBF24;
 }
 
 /* Set score numbers */
 .sb__td--num {
   font-size: 0.88rem;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.45);
 }
 .sb__td--set-win {
   font-weight: 700;
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.95);
 }
 .sb__td--empty {
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.15);
   font-size: 0.75rem;
 }
 
-/* Current set game count — slightly brighter than past sets */
+/* Current set game count */
 .sb__td--games {
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Current game points — gold, the key info */
+/* Current game points — the money stat */
 .sb__td--pt {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #facc15;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 1rem;
+  font-weight: 800;
+  color: #FBBF24;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  letter-spacing: -0.01em;
 }
 .sb__td--adv {
-  color: #60a5fa;
+  color: #818CF8;
 }
 
-/* Edit button cell */
+/* Edit button */
 .sb__td--btn {
   vertical-align: middle;
-  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 1px solid rgba(255, 255, 255, 0.04);
 }
 .sb__edit-btn {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.18);
   cursor: pointer;
-  font-size: 0.68rem;
-  padding: 2px 4px;
-  display: block;
+  font-size: 0.65rem;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin: 0 auto;
-  transition: color 0.15s;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
 }
-.sb__edit-btn:hover { color: rgba(255, 255, 255, 0.7); }
+.sb__edit-btn:hover {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+}
 
 /* Match winner banner */
 .sb__winner {
-  background: rgba(250, 204, 21, 0.15);
-  border-top: 1px solid rgba(250, 204, 21, 0.3);
-  color: #facc15;
+  background: rgba(251, 191, 36, 0.12);
+  border-top: 1px solid rgba(251, 191, 36, 0.25);
+  color: #FBBF24;
   text-align: center;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  padding: 4px 8px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 5px 10px;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -135,21 +150,23 @@
 .sb--edit {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px 14px;
-  min-width: 230px;
-  background: #07142b;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+  gap: 11px;
+  padding: 14px 16px 16px;
+  min-width: 240px;
+  background: rgba(6, 7, 16, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
 }
 
 .sb__edit-title {
-  font-size: 0.65rem;
-  font-weight: 700;
+  font-size: 0.62rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .sb__edit-field {
@@ -158,25 +175,29 @@
   gap: 5px;
 }
 .sb__edit-field label {
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.62rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.35);
 }
 .sb__edit-field input,
 .sb__edit-field select {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
   color: #ffffff;
-  font-size: 0.82rem;
-  padding: 5px 8px;
+  font-size: 0.84rem;
+  padding: 6px 9px;
   outline: none;
+  transition: border-color 0.15s, background 0.15s;
 }
 .sb__edit-field input:focus,
-.sb__edit-field select:focus { border-color: rgba(255, 255, 255, 0.45); }
-.sb__edit-field select option { background: #07142b; }
+.sb__edit-field select:focus {
+  border-color: rgba(99, 102, 241, 0.6);
+  background: rgba(99, 102, 241, 0.08);
+}
+.sb__edit-field select option { background: #0D0F1E; }
 
 .sb__edit-pair {
   display: flex;
@@ -184,37 +205,38 @@
   gap: 8px;
 }
 .sb__edit-pair input,
-.sb__edit-pair select { width: 62px; }
+.sb__edit-pair select { width: 66px; }
 
-.sb__dash { color: rgba(255, 255, 255, 0.3); font-size: 0.9rem; }
+.sb__dash { color: rgba(255, 255, 255, 0.25); font-size: 0.9rem; }
 
 .sb__edit-check {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.45);
   cursor: pointer;
 }
 .sb__edit-check input { width: auto; }
 
 .sb__edit-actions {
   display: flex;
-  gap: 7px;
+  gap: 8px;
   padding-top: 2px;
 }
 .sb__btn {
   flex: 1;
-  padding: 6px 0;
+  padding: 7px 0;
   border: none;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  border-radius: 7px;
+  font-size: 0.73rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, transform 0.1s;
 }
-.sb__btn:hover { opacity: 0.85; }
-.sb__btn--save   { background: #1d4ed8; color: #fff; }
-.sb__btn--cancel { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); }
+.sb__btn:hover { opacity: 0.88; }
+.sb__btn:active { transform: scale(0.97); }
+.sb__btn--save   { background: #6366F1; color: #fff; }
+.sb__btn--cancel { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.45); }

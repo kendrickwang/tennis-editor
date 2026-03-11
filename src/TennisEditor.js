@@ -2,8 +2,11 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Scoreboard from './Scoreboard';
 import PointTimeline from './PointTimeline';
 import VideoExporter from './VideoExporter';
-import { INITIAL_SCORE, addPoint, scoreLabel } from './tennisScore';
+import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel } from './tennisScore';
 import './TennisEditor.css';
+
+const PLAYER_1_NAME = "Kendrick";
+const PLAYER_2_NAME = "Joey";
 
 function fmtTime(s) {
   if (!isFinite(s)) return '0:00.0';
@@ -125,7 +128,7 @@ export default function TennisEditor() {
 
     const label = scoreLabel(scoreAfter);
     setStatus({
-      text: `${winner === 1 ? 'Kendrick' : 'Joey'} wins · Score: ${label} · Games: ${scoreAfter.currentSet[0]}–${scoreAfter.currentSet[1]}`,
+      text: `${winner === 1 ? PLAYER_1_NAME : PLAYER_2_NAME} wins · Score: ${label} · Games: ${scoreAfter.currentSet[0]}–${scoreAfter.currentSet[1]}`,
       kind: 'success',
     });
   }, []); // stable — reads from refs only
@@ -190,7 +193,7 @@ export default function TennisEditor() {
               <Scoreboard
                 score={score}
                 onScoreChange={newScore => { setScore(newScore); scoreRef.current = newScore; }}
-                names={['Kendrick', 'Joey']}
+                names={[PLAYER_1_NAME, PLAYER_2_NAME]}
               />
             </div>
           </div>
@@ -226,6 +229,7 @@ export default function TennisEditor() {
             currentTime={currentTime}
             pendingStart={pendingStart}
             onSeek={seekTo}
+            names={[PLAYER_1_NAME, PLAYER_2_NAME]}
           />
 
           {/* Points list */}
@@ -243,9 +247,12 @@ export default function TennisEditor() {
                 {points.map((pt, i) => (
                   <div key={pt.id} className={`te__point-row te__point-row--p${pt.winner}`}>
                     <span className="te__point-num">#{i + 1}</span>
-                    <span className="te__point-score">{scoreLabel(pt.scoreBefore)}</span>
+                    <span className="te__point-score">
+                      <span className="te__point-game-score">{gameScoreLabel(pt.scoreBefore)}</span>
+                      <span className="te__point-pt-score">{scoreLabel(pt.scoreBefore)}</span>
+                    </span>
                     <span className="te__point-time">{fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}</span>
-                    <span className="te__point-winner">P{pt.winner}</span>
+                    <span className="te__point-winner">{pt.winner === 1 ? PLAYER_1_NAME : PLAYER_2_NAME}</span>
                     <button className="te__point-del" onClick={() => removePoint(pt.id)} title="Remove">×</button>
                   </div>
                 ))}

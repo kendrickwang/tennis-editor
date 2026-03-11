@@ -19,7 +19,7 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 20;
 const ZOOM_STEP = 1.6; // per button click or scroll tick
 
-export default function PointTimeline({ points, duration, currentTime, pendingStart, onSeek }) {
+export default function PointTimeline({ points, duration, currentTime, pendingStart, onSeek, names = ['P1', 'P2'] }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState(0); // left edge as fraction of total duration
 
@@ -151,7 +151,7 @@ export default function PointTimeline({ points, duration, currentTime, pendingSt
               key={pt.id}
               className={`ptl__segment ${pt.winner === 1 ? 'ptl__segment--p1' : 'ptl__segment--p2'}`}
               style={{ left: `${clampedLeft}%`, width: `${widthPct}%` }}
-              title={`${fmtTime(pt.startTime)}–${fmtTime(pt.endTime)} · ${label} · P${pt.winner} wins`}
+              title={`${fmtTime(pt.startTime)}–${fmtTime(pt.endTime)} · ${label} · ${pt.winner === 1 ? names[0] : names[1]} wins`}
               onClick={e => { e.stopPropagation(); onSeek(pt.startTime); }}
             >
               {widthPct > 2.5 && <span className="ptl__label">{label}</span>}
@@ -189,8 +189,8 @@ export default function PointTimeline({ points, duration, currentTime, pendingSt
 
       {/* Legend */}
       <div className="ptl__legend">
-        <span className="ptl__legend-item ptl__legend-item--p1">P1 wins</span>
-        <span className="ptl__legend-item ptl__legend-item--p2">P2 wins</span>
+        <span className="ptl__legend-item ptl__legend-item--p1">{names[0]} wins</span>
+        <span className="ptl__legend-item ptl__legend-item--p2">{names[1]} wins</span>
         <span className="ptl__legend-item ptl__legend-item--gap">Gap</span>
         {zoom > 1 && <span className="ptl__legend-item ptl__legend-item--scroll">Scroll to pan · Pinch or scroll to zoom</span>}
       </div>

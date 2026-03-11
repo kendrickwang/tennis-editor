@@ -29,6 +29,11 @@ export function scoreLabel(score) {
   return `${d1}–${d2}`;
 }
 
+// Game score label for the current set (e.g. "3–2")
+export function gameScoreLabel(score) {
+  return `${score.currentSet[0]}–${score.currentSet[1]}`;
+}
+
 function scoreGamePoint(p1, p2, winner) {
   // Both at 3+ → deuce/advantage territory
   if (p1 >= 3 && p2 >= 3) {
