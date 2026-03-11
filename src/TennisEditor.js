@@ -295,6 +295,14 @@ export default function TennisEditor() {
                   pointsRef.current = [];
                 }}>Clear all</button>
               </div>
+              <div className="te__points-col-headers">
+                <span className="te__point-num"></span>
+                <span className="te__point-score">
+                  <span className="te__col-label">Game</span>
+                  <span className="te__col-label">Point</span>
+                </span>
+                <span className="te__col-label te__col-label--time">Time</span>
+              </div>
               <div className="te__points-rows">
                 {points.map((pt, i) => (
                   <div key={pt.id} className={`te__point-row te__point-row--p${pt.winner}`}>

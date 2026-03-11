@@ -376,6 +376,28 @@ kbd {
   border-radius: 2px;
 }
 
+/* ── Points column headers ────────────────────────────────── */
+.te__points-col-headers {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.35rem 1.125rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.te__col-label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+}
+
+.te__col-label--time {
+  flex: 1;
+}
+
 /* ── Point row ────────────────────────────────────────────── */
 .te__point-row {
   display: flex;
