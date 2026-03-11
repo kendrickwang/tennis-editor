@@ -326,7 +326,7 @@ export default function TennisEditor() {
                   }
                   return (
                     <React.Fragment key={pt.id}>
-                      <div className={`te__point-row te__point-row--p${pt.winner}`}>
+                      <div className={`te__point-row te__point-row--p${pt.winner}`} onClick={() => seekTo(pt.startTime)} style={{ cursor: 'pointer' }}>
                         <span className="te__point-num">#{i + 1}</span>
                         <span className="te__point-score">
                           <span className="te__point-game-score">{gameScoreLabel(pt.scoreBefore)}</span>
@@ -335,12 +335,12 @@ export default function TennisEditor() {
                         <span className="te__point-time">{fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}</span>
                         <button
                           className={`te__point-winner te__point-winner--btn te__point-winner--p${pt.winner}`}
-                          onClick={() => editPointWinner(pt.id, pt.winner === 1 ? 2 : 1)}
+                          onClick={e => { e.stopPropagation(); editPointWinner(pt.id, pt.winner === 1 ? 2 : 1); }}
                           title="Click to swap winner"
                         >
                           {pt.winner === 1 ? p1Name : p2Name} ⇄
                         </button>
-                        <button className="te__point-del" onClick={() => removePoint(pt.id)} title="Remove">×</button>
+                        <button className="te__point-del" onClick={e => { e.stopPropagation(); removePoint(pt.id); }} title="Remove">×</button>
                       </div>
                       {bannerText && (
                         <div className={`te__game-banner te__game-banner--p${pt.winner}${matchWon ? ' te__game-banner--match' : setCompleted ? ' te__game-banner--set' : ''}`}>
