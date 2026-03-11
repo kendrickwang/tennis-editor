@@ -77,6 +77,15 @@
   color: #ffffff;
 }
 
+/* Tiebreak loser score superscript */
+.sb__tb-score {
+  font-size: 0.5rem;
+  vertical-align: super;
+  line-height: 0;
+  opacity: 0.7;
+  margin-left: 1px;
+}
+
 /* Current (active) set — yellow highlight */
 .sb__td--current-set {
   background: #FFD700;

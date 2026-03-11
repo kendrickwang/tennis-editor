@@ -71,7 +71,8 @@ export function addPoint(score, winner) {
     const [t1, t2] = currentGame;
     const tw = (t1 >= 7 && t1 - t2 >= 2) ? 1 : (t2 >= 7 && t2 - t1 >= 2) ? 2 : 0;
     if (tw) {
-      sets.push(tw === 1 ? { p1: 7, p2: 6 } : { p1: 6, p2: 7 });
+      const tbLoser = tw === 1 ? t2 : t1; // loser's tiebreak points
+      sets.push(tw === 1 ? { p1: 7, p2: 6, tiebreak: tbLoser } : { p1: 6, p2: 7, tiebreak: tbLoser });
       const [p1s, p2s] = setsWon(sets);
       return { sets, currentSet: [0, 0], currentGame: [0, 0], isTiebreak: false,
         matchWinner: p1s >= 2 ? 1 : p2s >= 2 ? 2 : null };
