@@ -5,9 +5,6 @@ import VideoExporter from './VideoExporter';
 import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel } from './tennisScore';
 import './TennisEditor.css';
 
-const PLAYER_1_NAME = "Kendrick";
-const PLAYER_2_NAME = "Joey";
-
 function fmtTime(s) {
   if (!isFinite(s)) return '0:00.0';
   const m = Math.floor(s / 60);
@@ -17,6 +14,9 @@ function fmtTime(s) {
 }
 
 export default function TennisEditor() {
+  const [showHelp, setShowHelp] = useState(true);
+  const [p1Name, setP1Name] = useState('Player 1');
+  const [p2Name, setP2Name] = useState('Player 2');
   const [videoSrc, setVideoSrc] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
   const [fileName, setFileName] = useState('');
@@ -36,11 +36,15 @@ export default function TennisEditor() {
   const scoreRef = useRef(INITIAL_SCORE);
   const pendingStartRef = useRef(null);
   const pointsRef = useRef([]);
+  const p1NameRef = useRef('Player 1');
+  const p2NameRef = useRef('Player 2');
 
   // Keep refs in sync with state
   useEffect(() => { scoreRef.current = score; }, [score]);
   useEffect(() => { pendingStartRef.current = pendingStart; }, [pendingStart]);
   useEffect(() => { pointsRef.current = points; }, [points]);
+  useEffect(() => { p1NameRef.current = p1Name; }, [p1Name]);
+  useEffect(() => { p2NameRef.current = p2Name; }, [p2Name]);
 
   // Video time tracking
   useEffect(() => {
@@ -130,7 +134,7 @@ export default function TennisEditor() {
 
     const label = scoreLabel(scoreAfter);
     setStatus({
-      text: `${winner === 1 ? PLAYER_1_NAME : PLAYER_2_NAME} wins · Score: ${label} · Games: ${scoreAfter.currentSet[0]}–${scoreAfter.currentSet[1]}`,
+      text: `${winner === 1 ? p1NameRef.current : p2NameRef.current} wins · Score: ${label} · Games: ${scoreAfter.currentSet[0]}–${scoreAfter.currentSet[1]}`,
       kind: 'success',
     });
   }, []); // stable — reads from refs only
@@ -154,6 +158,9 @@ export default function TennisEditor() {
   // ── Render ─────────────────────────────────────────────────
   return (
     <div className="te">
+      {showHelp && (
+        <HelpModal names={[p1Name, p2Name]} onAccept={() => setShowHelp(false)} />
+      )}
       <h1 className="te__title">Tennis Match Editor</h1>
 
       {!videoSrc ? (
@@ -182,6 +189,30 @@ export default function TennisEditor() {
               onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
           </div>
 
+          {/* Player names */}
+          <div className="te__names">
+            <label className="te__name-field te__name-field--p1">
+              <span>Player 1</span>
+              <input
+                type="text"
+                value={p1Name}
+                onChange={e => setP1Name(e.target.value.slice(0, 20))}
+                maxLength={20}
+                placeholder="Player 1"
+              />
+            </label>
+            <label className="te__name-field te__name-field--p2">
+              <span>Player 2</span>
+              <input
+                type="text"
+                value={p2Name}
+                onChange={e => setP2Name(e.target.value.slice(0, 20))}
+                maxLength={20}
+                placeholder="Player 2"
+              />
+            </label>
+          </div>
+
           {/* Video + scoreboard overlay */}
           <div className="te__video-wrap">
             <video
@@ -195,7 +226,7 @@ export default function TennisEditor() {
               <Scoreboard
                 score={score}
                 onScoreChange={newScore => { setScore(newScore); scoreRef.current = newScore; }}
-                names={[PLAYER_1_NAME, PLAYER_2_NAME]}
+                names={[p1Name, p2Name]}
                 serving={serving}
                 onServingChange={setServing}
               />
@@ -224,7 +255,7 @@ export default function TennisEditor() {
             videoFile={videoFile}
             points={points}
             fileName={fileName}
-            names={[PLAYER_1_NAME, PLAYER_2_NAME]}
+            names={[p1Name, p2Name]}
             serving={serving}
           />
 
@@ -235,7 +266,7 @@ export default function TennisEditor() {
             currentTime={currentTime}
             pendingStart={pendingStart}
             onSeek={seekTo}
-            names={[PLAYER_1_NAME, PLAYER_2_NAME]}
+            names={[p1Name, p2Name]}
           />
 
           {/* Points list */}
@@ -258,7 +289,7 @@ export default function TennisEditor() {
                       <span className="te__point-pt-score">{scoreLabel(pt.scoreBefore)}</span>
                     </span>
                     <span className="te__point-time">{fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}</span>
-                    <span className="te__point-winner">{pt.winner === 1 ? PLAYER_1_NAME : PLAYER_2_NAME}</span>
+                    <span className="te__point-winner">{pt.winner === 1 ? p1Name : p2Name}</span>
                     <button className="te__point-del" onClick={() => removePoint(pt.id)} title="Remove">×</button>
                   </div>
                 ))}
@@ -267,6 +298,59 @@ export default function TennisEditor() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function HelpModal({ names, onAccept }) {
+  const [p1, p2] = names;
+  return (
+    <div className="te__modal-backdrop">
+      <div className="te__modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div className="te__modal-header">
+          <span className="te__modal-icon">🎾</span>
+          <h2 id="modal-title" className="te__modal-title">How to use the editor</h2>
+          <p className="te__modal-sub">Tag every point in your match video using just three keys</p>
+        </div>
+
+        <div className="te__modal-keys">
+          <div className="te__modal-key">
+            <kbd className="te__modal-kbd">S</kbd>
+            <span>Mark <strong>start</strong> of rally</span>
+          </div>
+          <div className="te__modal-key">
+            <kbd className="te__modal-kbd te__modal-kbd--p1">E</kbd>
+            <span><strong>{p1}</strong> wins the point</span>
+          </div>
+          <div className="te__modal-key">
+            <kbd className="te__modal-kbd te__modal-kbd--p2">R</kbd>
+            <span><strong>{p2}</strong> wins the point</span>
+          </div>
+        </div>
+
+        <ol className="te__modal-steps">
+          <li>
+            <span className="te__modal-step-num">1</span>
+            <span>Upload your match video and press <kbd>Space</kbd> to play</span>
+          </li>
+          <li>
+            <span className="te__modal-step-num">2</span>
+            <span>When a rally starts, press <kbd>S</kbd> to mark the beginning</span>
+          </li>
+          <li>
+            <span className="te__modal-step-num">3</span>
+            <span>When the point ends, press <kbd>E</kbd> if <strong>{p1}</strong> won or <kbd>R</kbd> if <strong>{p2}</strong> won — the score updates automatically</span>
+          </li>
+          <li>
+            <span className="te__modal-step-num">4</span>
+            <span>Repeat through the whole video, then hit <strong>Export</strong> to download every point as a clip</span>
+          </li>
+        </ol>
+
+        <button className="te__modal-accept" onClick={onAccept}>
+          Got it — let's start
+        </button>
+      </div>
     </div>
   );
 }
