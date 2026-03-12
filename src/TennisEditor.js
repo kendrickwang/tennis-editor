@@ -58,6 +58,7 @@ export default function TennisEditor() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [editScoreId, setEditScoreId] = useState(null);
   const [editScoreDraft, setEditScoreDraft] = useState(null);
+  const [showCustomizer, setShowCustomizer] = useState(false);
   // null = not transcoding; 0–1 = in progress
   const [transcodeProgress, setTranscodeProgress] = useState(null);
   const [scoreboardTheme, setScoreboardTheme] = useState(DEFAULT_THEME);
@@ -451,8 +452,10 @@ export default function TennisEditor() {
             <span><kbd>R</kbd> P2 wins</span>
           </div>
 
-          {/* Scoreboard customizer */}
-          <ScoreboardCustomizer theme={scoreboardTheme} onChange={setScoreboardTheme} />
+          {/* Scoreboard customizer trigger */}
+          <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>
+            ✦ Customize scoreboard
+          </button>
 
           {/* Export */}
           <VideoExporter
@@ -682,6 +685,36 @@ export default function TennisEditor() {
                     </React.Fragment>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Scoreboard customizer modal ──────── */}
+          {showCustomizer && (
+            <div className="te__customize-overlay" onClick={() => setShowCustomizer(false)}>
+              <div className="te__customize-modal" onClick={e => e.stopPropagation()}>
+                <div className="te__customize-modal-header">
+                  <span className="te__customize-modal-title">✦ Scoreboard Customizer</span>
+                  <button className="te__customize-modal-close" onClick={() => setShowCustomizer(false)}>✕</button>
+                </div>
+                <div className="te__customize-modal-body">
+                  <div className="te__customize-modal-preview">
+                    <div className="te__customize-preview-label">Live preview</div>
+                    <Scoreboard
+                      score={displayState.score}
+                      names={[p1Name, p2Name]}
+                      serving={displayState.serving}
+                      theme={scoreboardTheme}
+                    />
+                  </div>
+                  <div className="te__customize-modal-controls">
+                    <ScoreboardCustomizer
+                      theme={scoreboardTheme}
+                      onChange={setScoreboardTheme}
+                      embedded
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
