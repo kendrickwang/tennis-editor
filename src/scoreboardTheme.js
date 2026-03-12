@@ -25,6 +25,11 @@ export const DEFAULT_THEME = {
   cellPaddingV:        13,    // px
   outerRadius:         0,     // px
   cellRadius:          0,     // px
+  paddingH:            0,     // px – horizontal padding inside scoreboard bg
+
+  // ── Game score border ───────────────────────────────────────
+  gameScoreBorderWidth: 0,    // px, 0–3
+  gameScoreBorderColor: '#FFD700',
 
   // ── Footer label ───────────────────────────────────────────
   footerVisible:       false,
@@ -32,6 +37,7 @@ export const DEFAULT_THEME = {
   footerBg:            'rgba(0,0,0,0.75)',
   footerTextColor:     '#ffffff',
   footerPill:          true,
+  footerGap:           8,     // px transparent gap between main scoreboard and footer
 
   // ── Inline secondary text (e.g. "UTR 9.5") ─────────────────
   subtitleVisible:     false,
@@ -109,9 +115,12 @@ export const FONT_OPTIONS = [
 
 // Hard clamping ranges for numeric layout values
 export const LAYOUT_RULES = {
-  cellPaddingV: { min: 10, max: 18 }, // < 10px feels cramped; > 18px scoreboard too tall
-  outerRadius:  { min: 0,  max: 12 }, // > 12px looks like a pill, not a scoreboard
-  cellRadius:   { min: 0,  max: 8  }, // cells should never be rounder than the container
+  cellPaddingV:         { min: 10, max: 18 }, // < 10px feels cramped; > 18px scoreboard too tall
+  outerRadius:          { min: 0,  max: 12 }, // > 12px looks like a pill, not a scoreboard
+  cellRadius:           { min: 0,  max: 8  }, // cells should never be rounder than the container
+  paddingH:             { min: 0,  max: 20 }, // horizontal padding inside scoreboard background
+  gameScoreBorderWidth: { min: 0,  max: 3  }, // border around game score cell
+  footerGap:            { min: 0,  max: 24 }, // transparent gap between scoreboard and footer
 };
 
 // Minimum acceptable contrast ratios (WCAG-based)
@@ -190,13 +199,16 @@ export function autoTextColor(bgHex) {
  */
 export function sanitizeTheme(raw) {
   const t = { ...raw };
-  const { cellPaddingV, outerRadius, cellRadius } = LAYOUT_RULES;
+  const { cellPaddingV, outerRadius, cellRadius, paddingH, gameScoreBorderWidth, footerGap } = LAYOUT_RULES;
 
-  t.cellPaddingV = clamp(t.cellPaddingV ?? 11, cellPaddingV.min, cellPaddingV.max);
-  t.outerRadius  = clamp(t.outerRadius  ?? 0,  outerRadius.min,  outerRadius.max);
+  t.cellPaddingV         = clamp(t.cellPaddingV         ?? 13, cellPaddingV.min,         cellPaddingV.max);
+  t.outerRadius          = clamp(t.outerRadius          ?? 0,  outerRadius.min,          outerRadius.max);
   // Cell radius must not exceed the outer radius (looks broken otherwise)
-  const maxCell  = Math.min(cellRadius.max, t.outerRadius + 2);
-  t.cellRadius   = clamp(t.cellRadius   ?? 0,  cellRadius.min,   maxCell);
+  const maxCell          = Math.min(cellRadius.max, t.outerRadius + 2);
+  t.cellRadius           = clamp(t.cellRadius           ?? 0,  cellRadius.min,           maxCell);
+  t.paddingH             = clamp(t.paddingH             ?? 0,  paddingH.min,             paddingH.max);
+  t.gameScoreBorderWidth = clamp(t.gameScoreBorderWidth ?? 0,  gameScoreBorderWidth.min, gameScoreBorderWidth.max);
+  t.footerGap            = clamp(t.footerGap            ?? 8,  footerGap.min,            footerGap.max);
 
   return t;
 }

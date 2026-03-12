@@ -38,6 +38,10 @@ export default function Scoreboard({
     '--sb-outer-radius':     `${theme.outerRadius}px`,
     '--sb-cell-radius':      `${theme.cellRadius}px`,
     '--sb-font':             theme.fontFamily,
+    '--sb-padding-h':        `${theme.paddingH ?? 0}px`,
+    '--sb-pt-border-w':      `${theme.gameScoreBorderWidth ?? 0}px`,
+    '--sb-pt-border-c':      theme.gameScoreBorderColor || theme.setActiveBg,
+    '--sb-footer-gap':       `${theme.footerGap ?? 8}px`,
   };
 
   // Only show sets that have started (completed or currently active)
@@ -54,66 +58,75 @@ export default function Scoreboard({
   const subtitles = [theme.p1Subtitle, theme.p2Subtitle];
   const badges    = [theme.p1Badge,    theme.p2Badge];
 
+  const showFooter = theme.footerVisible && theme.footerText;
+
   return (
-    <div className="sb" style={cssVars}>
-      <table className="sb__table">
-        <tbody>
-          {[0, 1].map(pi => {
-            const pt = playerPtDisplay(score.currentGame[0], score.currentGame[1], score.isTiebreak, pi);
-            const isServing = serving === pi;
-            const subtitle  = theme.subtitleVisible ? subtitles[pi] : null;
-            const badge     = badges[pi];
-            return (
-              <tr key={pi} className="sb__row">
-                <td
-                  className={`sb__td sb__td--dot ${isServing ? 'sb__td--serving' : ''}`}
-                  onClick={() => onServingChange?.(pi)}
-                  title="Click to set server"
-                >
-                  ●
-                </td>
-                <td className={`sb__td sb__td--name ${score.matchWinner === pi + 1 ? 'sb__td--winner' : ''}`}>
-                  <span className="sb__name-cell">
-                    <span className="sb__name-text">{names[pi].toUpperCase()}</span>
-                    {subtitle && <span className="sb__subtitle">{subtitle}</span>}
-                    {badge && <img className="sb__badge" src={badge} alt="" />}
-                  </span>
-                </td>
-                {allSets.map((s, si) => {
-                  const isCurrent = s?.status === 'current';
-                  const mine   = s !== null ? (pi === 0 ? s.p1 : s.p2) : null;
-                  const theirs = s !== null ? (pi === 0 ? s.p2 : s.p1) : null;
-                  const isSetWon = s?.status === 'completed' && mine > theirs;
-                  return (
-                    <td key={si} className={`sb__td sb__td--set ${isCurrent ? 'sb__td--current-set' : ''} ${s === null ? 'sb__td--empty-set' : ''} ${isSetWon ? 'sb__td--set-win' : ''}`}>
-                      {s !== null ? mine : ''}
-                      {s?.tiebreak !== undefined && mine < theirs && (
-                        <sup className="sb__tb-score">{s.tiebreak}</sup>
-                      )}
-                    </td>
-                  );
-                })}
-                <td className={`sb__td sb__td--pt ${pt === 'Ad' ? 'sb__td--adv' : ''}`}>
-                  {pt}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {score.matchWinner && (
-        <div className="sb__winner">{names[score.matchWinner - 1].toUpperCase()} WINS</div>
-      )}
-      {theme.footerVisible && theme.footerText && (
-        <div
-          className="sb__footer"
-          style={{
-            background:   theme.footerBg,
-            color:        theme.footerTextColor,
-            borderRadius: theme.footerPill ? '99px' : `${theme.outerRadius || 4}px`,
-          }}
-        >
-          {theme.footerText}
+    <div className="sb-wrap" style={cssVars}>
+      {/* ── Main scoreboard box ────────────────────────────── */}
+      <div className="sb__main">
+        <table className="sb__table">
+          <tbody>
+            {[0, 1].map(pi => {
+              const pt = playerPtDisplay(score.currentGame[0], score.currentGame[1], score.isTiebreak, pi);
+              const isServing = serving === pi;
+              const subtitle  = theme.subtitleVisible ? subtitles[pi] : null;
+              const badge     = badges[pi];
+              return (
+                <tr key={pi} className="sb__row">
+                  <td
+                    className={`sb__td sb__td--dot ${isServing ? 'sb__td--serving' : ''}`}
+                    onClick={() => onServingChange?.(pi)}
+                    title="Click to set server"
+                  >
+                    ●
+                  </td>
+                  <td className={`sb__td sb__td--name ${score.matchWinner === pi + 1 ? 'sb__td--winner' : ''}`}>
+                    <span className="sb__name-cell">
+                      {badge && <img className="sb__badge" src={badge} alt="" />}
+                      <span className="sb__name-text">{names[pi].toUpperCase()}</span>
+                      {subtitle && <span className="sb__subtitle">{subtitle}</span>}
+                    </span>
+                  </td>
+                  {allSets.map((s, si) => {
+                    const isCurrent = s?.status === 'current';
+                    const mine   = s !== null ? (pi === 0 ? s.p1 : s.p2) : null;
+                    const theirs = s !== null ? (pi === 0 ? s.p2 : s.p1) : null;
+                    const isSetWon = s?.status === 'completed' && mine > theirs;
+                    return (
+                      <td key={si} className={`sb__td sb__td--set ${isCurrent ? 'sb__td--current-set' : ''} ${s === null ? 'sb__td--empty-set' : ''} ${isSetWon ? 'sb__td--set-win' : ''}`}>
+                        {s !== null ? mine : ''}
+                        {s?.tiebreak !== undefined && mine < theirs && (
+                          <sup className="sb__tb-score">{s.tiebreak}</sup>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className={`sb__td sb__td--pt ${pt === 'Ad' ? 'sb__td--adv' : ''}`}>
+                    {pt}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {score.matchWinner && (
+          <div className="sb__winner">{names[score.matchWinner - 1].toUpperCase()} WINS</div>
+        )}
+      </div>
+
+      {/* ── Footer — outside main box, transparent gap above ── */}
+      {showFooter && (
+        <div className="sb__footer-outer">
+          <div
+            className="sb__footer"
+            style={{
+              background:   theme.footerBg,
+              color:        theme.footerTextColor,
+              borderRadius: theme.footerPill ? '99px' : `${theme.outerRadius || 4}px`,
+            }}
+          >
+            {theme.footerText}
+          </div>
         </div>
       )}
     </div>

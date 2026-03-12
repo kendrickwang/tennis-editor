@@ -3,14 +3,25 @@
    Fallbacks match the original US Open broadcast style.
    ══════════════════════════════════════════════════════════ */
 
-.sb {
+/* ── Outer wrapper (transparent, holds main box + footer) ── */
+.sb-wrap {
   font-family: var(--sb-font, system-ui, sans-serif);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── Main scoreboard box ──────────────────────────────────── */
+.sb__main {
   background: var(--sb-bg, #0a1929);
   border-radius: var(--sb-outer-radius, 3px);
   overflow: hidden;
   display: inline-block;
-  width: 340px;
+  width: calc(340px + var(--sb-padding-h, 0px) * 2);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.85);
+  padding-left: var(--sb-padding-h, 0px);
+  padding-right: var(--sb-padding-h, 0px);
+  box-sizing: border-box;
 }
 
 /* ── Table ───────────────────────────────────────────────── */
@@ -69,11 +80,19 @@
   color: var(--sb-serving, #FFD700);
 }
 
-/* Name + subtitle inline */
+/* Name cell: badge + name + subtitle inline.
+   Badge comes first but is constrained to not push name vertically. */
 .sb__name-cell {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 5px;
+  overflow: hidden;
+}
+.sb__name-text {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sb__subtitle {
   font-size: 0.55rem;
@@ -83,13 +102,14 @@
   text-transform: uppercase;
   flex-shrink: 0;
 }
+
+/* Badge: constrained to 1.2× font height so it never pushes the row taller */
 .sb__badge {
-  width: 22px;
-  height: 22px;
+  height: 1.2em;
+  width: auto;
+  max-width: 28px;
   object-fit: contain;
   flex-shrink: 0;
-  margin-left: 4px;
-  vertical-align: middle;
   background: transparent;
 }
 
@@ -139,6 +159,9 @@
   width: 58px;
   letter-spacing: -0.01em;
   border-radius: var(--sb-cell-radius, 0);
+  /* Game score border (configurable) */
+  outline: var(--sb-pt-border-w, 0px) solid var(--sb-pt-border-c, transparent);
+  outline-offset: -1px;
 }
 .sb__td--adv {
   color: var(--sb-game-text, #000000);
@@ -181,7 +204,13 @@
   padding: 6px 14px;
 }
 
-/* Footer label */
+/* Footer — outside the main box; uses a transparent gap above */
+.sb__footer-outer {
+  padding-top: var(--sb-footer-gap, 8px);
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
 .sb__footer {
   text-align: center;
   font-size: 0.65rem;
@@ -189,13 +218,12 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 5px 16px;
-  margin: 6px auto 0;
   display: inline-block;
-  max-width: 100%;
+  max-width: 80%;
 }
 
 /* ══════════════════════════════════════════════════════════
-   Edit panel
+   Edit panel (legacy styles kept for compatibility)
    ══════════════════════════════════════════════════════════ */
 
 .sb--edit {
