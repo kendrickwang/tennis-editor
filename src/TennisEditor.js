@@ -262,26 +262,28 @@ export default function TennisEditor() {
 
           {/* Player names + first server */}
           <div className="te__names">
-            <label className="te__name-field te__name-field--p1">
-              <span>Player/Team 1</span>
+            <div className="te__name-field te__name-field--p1">
               <input
+                id="p1-name"
                 type="text"
                 value={p1Name}
                 onChange={e => setP1Name(e.target.value.slice(0, 20))}
                 maxLength={20}
-                placeholder="Type player/team name here"
+                placeholder=" "
               />
-            </label>
-            <label className="te__name-field te__name-field--p2">
-              <span>Player/Team 2</span>
+              <label htmlFor="p1-name">Player/Team 1</label>
+            </div>
+            <div className="te__name-field te__name-field--p2">
               <input
+                id="p2-name"
                 type="text"
                 value={p2Name}
                 onChange={e => setP2Name(e.target.value.slice(0, 20))}
                 maxLength={20}
-                placeholder="Type player/team name here"
+                placeholder=" "
               />
-            </label>
+              <label htmlFor="p2-name">Player/Team 2</label>
+            </div>
           </div>
           <div className="te__serve-picker">
             <span className="te__serve-picker-label">Serves first</span>

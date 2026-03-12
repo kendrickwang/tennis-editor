@@ -173,49 +173,61 @@
 
 .te__name-field {
   flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.75rem 0.4rem 0.875rem;
+  position: relative;
+  height: 52px;
+}
+
+/* The actual input */
+.te__name-field input {
+  width: 100%;
+  height: 100%;
+  padding: 20px 12px 6px;
+  box-sizing: border-box;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  cursor: text;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
   transition: border-color 0.15s;
 }
 
-.te__name-field:focus-within {
-  border-color: var(--border-lit);
-}
-
-.te__name-field span {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+/* Floating label */
+.te__name-field label {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-3);
+  pointer-events: none;
+  transition: top 0.15s ease, font-size 0.15s ease, font-weight 0.15s ease,
+              transform 0.15s ease, color 0.15s ease, letter-spacing 0.15s ease;
   white-space: nowrap;
-  flex-shrink: 0;
+  transform-origin: left center;
 }
 
-.te__name-field--p1 span { color: var(--p1); }
-.te__name-field--p2 span { color: var(--p2); }
-
-.te__name-field input {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  color: var(--text);
-  font-size: 0.85rem;
-  font-weight: 600;
-  font-family: inherit;
-  min-width: 0;
+/* Float up when focused or has a value */
+.te__name-field input:focus ~ label,
+.te__name-field input:not(:placeholder-shown) ~ label {
+  top: 10px;
+  transform: translateY(0) scale(0.72);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-.te__name-field input::placeholder { color: var(--text-3); }
+.te__name-field--p1 input:focus ~ label,
+.te__name-field--p1 input:not(:placeholder-shown) ~ label { color: var(--p1); }
 
-.te__name-field--p1:focus-within { border-color: var(--p1-border); }
-.te__name-field--p2:focus-within { border-color: var(--p2-border); }
+.te__name-field--p2 input:focus ~ label,
+.te__name-field--p2 input:not(:placeholder-shown) ~ label { color: var(--p2); }
+
+.te__name-field--p1 input:focus { border-color: var(--p1-border); }
+.te__name-field--p2 input:focus { border-color: var(--p2-border); }
 
 /* ── Video wrapper ────────────────────────────────────────── */
 .te__video-wrap {
