@@ -809,6 +809,144 @@ kbd {
 }
 .te__point-menu-item:hover { background: var(--border); }
 
+/* ── Inline edit score form ───────────────────────────────── */
+.te__edit-score {
+  background: var(--surface-2);
+  border: 1px solid var(--border-lit);
+  border-radius: 6px;
+  padding: 12px 14px 10px;
+  margin: 2px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+}
+.te__edit-score-title {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-2);
+}
+.te__edit-score-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.te__edit-score-row label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-2);
+  min-width: 110px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.te__edit-score-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  outline: none;
+  width: 120px;
+  transition: border-color 0.15s;
+}
+.te__edit-score-input:focus { border-color: var(--accent); }
+.te__edit-score-pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.te__edit-score-num {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  outline: none;
+  width: 60px;
+  transition: border-color 0.15s;
+  text-align: center;
+}
+.te__edit-score-num:focus { border-color: var(--accent); }
+.te__edit-score-sel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  outline: none;
+  width: 72px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.te__edit-score-sel:focus { border-color: var(--accent); }
+.te__edit-score-dash {
+  color: var(--text-2);
+  font-size: 0.9rem;
+}
+.te__edit-score-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.te__edit-score-check input { width: auto; accent-color: var(--accent); }
+.te__edit-score-override-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.62rem;
+  color: #fbbf24;
+}
+.te__edit-score-clear-override {
+  background: none;
+  border: none;
+  color: #fbbf24;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.62rem;
+  padding: 0;
+}
+.te__edit-score-clear-override:hover { color: #f97316; }
+.te__edit-score-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 2px;
+}
+.te__edit-score-save {
+  padding: 6px 18px;
+  background: var(--accent);
+  border: none;
+  border-radius: 5px;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.te__edit-score-save:hover { opacity: 0.85; }
+.te__edit-score-cancel {
+  padding: 6px 14px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-2);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.te__edit-score-cancel:hover { border-color: var(--text-2); }
+
 /* ── Help Modal ───────────────────────────────────────────── */
 .te__modal-backdrop {
   position: fixed;

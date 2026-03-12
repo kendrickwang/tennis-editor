@@ -16,6 +16,29 @@ function fmtTime(s) {
   return `${m}:${String(sec).padStart(2, '0')}.${t}`;
 }
 
+// ── Score edit helpers ─────────────────────────────────────────
+function parseSets(str) {
+  return str.trim().split(/\s+/).filter(Boolean).map(s => {
+    const [a, b] = s.split('-').map(n => parseInt(n, 10));
+    return { p1: isNaN(a) ? 0 : a, p2: isNaN(b) ? 0 : b };
+  });
+}
+
+function displayToPts(val) {
+  if (val === 'Ad') return 4;
+  return { '0': 0, '15': 1, '30': 2, '40': 3 }[val] ?? 0;
+}
+
+function ptDisplayStr(g1, g2, isTb, idx) {
+  const [mine, theirs] = idx === 0 ? [g1, g2] : [g2, g1];
+  if (isTb) return String(mine);
+  if (mine >= 3 && theirs >= 3) {
+    if (mine === theirs) return '40';
+    return mine > theirs ? 'Ad' : '40';
+  }
+  return ['0', '15', '30', '40'][mine] ?? '0';
+}
+
 export default function TennisEditor() {
   const [showHelp, setShowHelp] = useState(true);
   const [p1Name, setP1Name] = useState('Player 1');
@@ -33,6 +56,8 @@ export default function TennisEditor() {
   const [status, setStatus] = useState({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [editScoreId, setEditScoreId] = useState(null);
+  const [editScoreDraft, setEditScoreDraft] = useState(null);
   // null = not transcoding; 0–1 = in progress
   const [transcodeProgress, setTranscodeProgress] = useState(null);
   const [scoreboardTheme, setScoreboardTheme] = useState(DEFAULT_THEME);
@@ -243,6 +268,46 @@ export default function TennisEditor() {
     scoreRef.current = finalScore;
   }
 
+  function openEditScore(pt) {
+    const s = pt.scoreBefore;
+    setEditScoreDraft({
+      setsStr: s.sets.map(s => `${s.p1}-${s.p2}`).join(' '),
+      g1: String(s.currentSet[0]),
+      g2: String(s.currentSet[1]),
+      p1pts: ptDisplayStr(s.currentGame[0], s.currentGame[1], s.isTiebreak, 0),
+      p2pts: ptDisplayStr(s.currentGame[0], s.currentGame[1], s.isTiebreak, 1),
+      isTb: s.isTiebreak,
+    });
+    setEditScoreId(pt.id);
+  }
+
+  function saveEditScore() {
+    const sets = parseSets(editScoreDraft.setsStr);
+    let cg;
+    if (editScoreDraft.isTb) {
+      cg = [parseInt(editScoreDraft.p1pts) || 0, parseInt(editScoreDraft.p2pts) || 0];
+    } else {
+      let r1 = displayToPts(editScoreDraft.p1pts);
+      let r2 = displayToPts(editScoreDraft.p2pts);
+      if (r1 === 4 && r2 === 4) { r1 = 3; r2 = 3; }
+      cg = [r1, r2];
+    }
+    const override = {
+      sets,
+      currentSet: [parseInt(editScoreDraft.g1) || 0, parseInt(editScoreDraft.g2) || 0],
+      currentGame: cg,
+      isTiebreak: editScoreDraft.isTb,
+      matchWinner: null,
+    };
+    const updated = points.map(p => p.id === editScoreId ? { ...p, scoreOverride: override } : p);
+    const { points: recomputed, finalScore } = recomputeScores(updated, initialServer);
+    setPoints(recomputed);
+    setScore(finalScore);
+    scoreRef.current = finalScore;
+    setEditScoreId(null);
+    setEditScoreDraft(null);
+  }
+
   // Close point menu on any outside click
   useEffect(() => {
     if (!openMenuId) return;
@@ -361,7 +426,6 @@ export default function TennisEditor() {
             <div className="te__sb-overlay">
               <Scoreboard
                 score={displayState.score}
-                onScoreChange={newScore => { setScore(newScore); scoreRef.current = newScore; }}
                 names={[p1Name, p2Name]}
                 serving={displayState.serving}
                 onServingChange={s => { if (s !== serving) setInitialServer(1 - initialServer); }}
@@ -492,6 +556,12 @@ export default function TennisEditor() {
                               >
                                 {isManualServe ? '↺ Clear server override' : '⇄ Switch server'}
                               </button>
+                              <button
+                                className="te__point-menu-item"
+                                onClick={() => { openEditScore(pt); setOpenMenuId(null); }}
+                              >
+                                ✎ Edit score at this point
+                              </button>
                             </div>
                           )}
                         </span>
@@ -504,6 +574,83 @@ export default function TennisEditor() {
                         </button>
                         <button className="te__point-del" onClick={e => { e.stopPropagation(); removePoint(pt.id); }} title="Remove">×</button>
                       </div>
+                      {editScoreId === pt.id && editScoreDraft && (
+                        <div className="te__edit-score" onClick={e => e.stopPropagation()}>
+                          <div className="te__edit-score-title">Edit score before point #{i + 1}</div>
+                          <div className="te__edit-score-row">
+                            <label>Past sets</label>
+                            <input
+                              className="te__edit-score-input"
+                              value={editScoreDraft.setsStr}
+                              placeholder="e.g. 6-3 7-5"
+                              onChange={e => setEditScoreDraft(d => ({ ...d, setsStr: e.target.value }))}
+                            />
+                          </div>
+                          <div className="te__edit-score-row">
+                            <label>Current set games</label>
+                            <div className="te__edit-score-pair">
+                              <input type="number" min="0" max="7" className="te__edit-score-num"
+                                value={editScoreDraft.g1}
+                                onChange={e => setEditScoreDraft(d => ({ ...d, g1: e.target.value }))} />
+                              <span className="te__edit-score-dash">–</span>
+                              <input type="number" min="0" max="7" className="te__edit-score-num"
+                                value={editScoreDraft.g2}
+                                onChange={e => setEditScoreDraft(d => ({ ...d, g2: e.target.value }))} />
+                            </div>
+                          </div>
+                          <div className="te__edit-score-row">
+                            <label>Points{editScoreDraft.isTb ? ' (tiebreak)' : ''}</label>
+                            {editScoreDraft.isTb ? (
+                              <div className="te__edit-score-pair">
+                                <input type="number" min="0" className="te__edit-score-num"
+                                  value={editScoreDraft.p1pts}
+                                  onChange={e => setEditScoreDraft(d => ({ ...d, p1pts: e.target.value }))} />
+                                <span className="te__edit-score-dash">–</span>
+                                <input type="number" min="0" className="te__edit-score-num"
+                                  value={editScoreDraft.p2pts}
+                                  onChange={e => setEditScoreDraft(d => ({ ...d, p2pts: e.target.value }))} />
+                              </div>
+                            ) : (
+                              <div className="te__edit-score-pair">
+                                <select className="te__edit-score-sel"
+                                  value={editScoreDraft.p1pts}
+                                  onChange={e => setEditScoreDraft(d => ({ ...d, p1pts: e.target.value }))}>
+                                  {['0','15','30','40','Ad'].map(v => <option key={v}>{v}</option>)}
+                                </select>
+                                <span className="te__edit-score-dash">–</span>
+                                <select className="te__edit-score-sel"
+                                  value={editScoreDraft.p2pts}
+                                  onChange={e => setEditScoreDraft(d => ({ ...d, p2pts: e.target.value }))}>
+                                  {['0','15','30','40','Ad'].map(v => <option key={v}>{v}</option>)}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                          <label className="te__edit-score-check">
+                            <input type="checkbox" checked={editScoreDraft.isTb}
+                              onChange={e => setEditScoreDraft(d => ({ ...d, isTb: e.target.checked }))} />
+                            Tiebreak
+                          </label>
+                          {pt.scoreOverride && (
+                            <div className="te__edit-score-override-note">
+                              <span>⚠ Override active —</span>
+                              <button className="te__edit-score-clear-override"
+                                onClick={() => {
+                                  const updated = points.map(p => p.id === pt.id ? { ...p, scoreOverride: undefined } : p);
+                                  const { points: recomputed, finalScore } = recomputeScores(updated, initialServer);
+                                  setPoints(recomputed); setScore(finalScore); scoreRef.current = finalScore;
+                                  setEditScoreId(null); setEditScoreDraft(null);
+                                }}>
+                                clear override
+                              </button>
+                            </div>
+                          )}
+                          <div className="te__edit-score-actions">
+                            <button className="te__edit-score-save" onClick={saveEditScore}>Save</button>
+                            <button className="te__edit-score-cancel" onClick={() => { setEditScoreId(null); setEditScoreDraft(null); }}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
                       {bannerText && (
                         <div className={`te__game-banner te__game-banner--p${pt.winner}${matchWon ? ' te__game-banner--match' : setCompleted ? ' te__game-banner--set' : ''}`}>
                           <span>{bannerText}</span>

@@ -22,7 +22,7 @@ export const DEFAULT_THEME = {
   fontFamily:          "system-ui, -apple-system, 'Segoe UI', sans-serif",
 
   // ── Layout ─────────────────────────────────────────────────
-  cellPaddingV:        11,    // px
+  cellPaddingV:        13,    // px
   outerRadius:         0,     // px
   cellRadius:          0,     // px
 

@@ -131,6 +131,8 @@ export function recomputeScores(points, initialServer = 0) {
   const sorted = [...points].sort((a, b) => a.startTime - b.startTime);
   let score = INITIAL_SCORE;
   const recomputed = sorted.map(pt => {
+    // Manual score override — reset computation chain at this point
+    if (pt.scoreOverride) { score = pt.scoreOverride; }
     const scoreBefore = score;
     const serving = pt.servingManual !== undefined
       ? pt.servingManual
