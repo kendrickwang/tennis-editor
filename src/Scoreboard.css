@@ -1,11 +1,12 @@
 /* ══════════════════════════════════════════════════════════
-   US Open Broadcast Scoreboard
+   Scoreboard — themed via CSS variables injected by Scoreboard.js
+   Fallbacks match the original US Open broadcast style.
    ══════════════════════════════════════════════════════════ */
 
 .sb {
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'Segoe UI', sans-serif;
-  background: #0a1929;
-  border-radius: 3px;
+  font-family: var(--sb-font, system-ui, sans-serif);
+  background: var(--sb-bg, #0a1929);
+  border-radius: var(--sb-outer-radius, 3px);
   overflow: hidden;
   display: inline-block;
   width: 340px;
@@ -20,14 +21,15 @@
 
 /* ── Player rows ─────────────────────────────────────────── */
 .sb__row + .sb__row {
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--sb-divider, rgba(255, 255, 255, 0.07));
 }
 
 .sb__td {
-  padding: 11px 0;
+  padding: var(--sb-cell-pad-v, 11px) 0;
   text-align: center;
   vertical-align: middle;
-  color: #ffffff;
+  color: var(--sb-name-text, #ffffff);
+  border-radius: var(--sb-cell-radius, 0);
 }
 
 /* Serving dot */
@@ -41,40 +43,66 @@
   transition: color 0.1s;
 }
 .sb__td--serving {
-  color: #FFD700;
+  color: var(--sb-serving, #FFD700);
 }
 .sb__td--dot:hover {
-  color: rgba(255, 215, 0, 0.35);
+  color: color-mix(in srgb, var(--sb-serving, #FFD700) 35%, transparent);
 }
 .sb__td--serving:hover {
-  color: #FFD700;
+  color: var(--sb-serving, #FFD700);
 }
 
 /* Player name */
 .sb__td--name {
   text-align: left;
-  padding: 11px 14px 11px 6px;
+  padding: var(--sb-cell-pad-v, 11px) 14px var(--sb-cell-pad-v, 11px) 6px;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: var(--sb-name-weight, 700);
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #ffffff;
+  color: var(--sb-name-text, #ffffff);
   white-space: nowrap;
+  max-width: 138px;
+  overflow: hidden;
 }
 .sb__td--winner {
-  color: #FFD700;
+  color: var(--sb-serving, #FFD700);
+}
+
+/* Name + subtitle inline */
+.sb__name-cell {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.sb__subtitle {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.sb__badge {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+  margin-left: 4px;
+  vertical-align: middle;
 }
 
 /* Set score cells */
 .sb__td--set {
   font-size: 1.15rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--sb-set-inactive, rgba(255, 255, 255, 0.55));
+  background: var(--sb-set-inactive-bg, transparent);
   width: 40px;
 }
 .sb__td--set-win {
   font-weight: 900;
-  color: #ffffff;
+  color: var(--sb-set-win-text, #ffffff);
 }
 
 /* Tiebreak loser score superscript */
@@ -86,11 +114,12 @@
   margin-left: 1px;
 }
 
-/* Current (active) set — yellow highlight */
+/* Current (active) set */
 .sb__td--current-set {
-  background: #FFD700;
-  color: #000000 !important;
+  background: var(--sb-set-active-bg, #FFD700);
+  color: var(--sb-set-active-text, #000000) !important;
   font-weight: 900;
+  border-radius: var(--sb-cell-radius, 0);
 }
 
 /* Future empty set slot */
@@ -103,13 +132,15 @@
 .sb__td--pt {
   font-size: 1.4rem;
   font-weight: 900;
-  color: #ffffff;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--sb-game-bg, #FFD700);
+  color: var(--sb-game-text, #000000);
+  border-left: 1px solid var(--sb-divider, rgba(255, 255, 255, 0.08));
   width: 58px;
   letter-spacing: -0.01em;
+  border-radius: var(--sb-cell-radius, 0);
 }
 .sb__td--adv {
-  color: #FFD700;
+  color: var(--sb-game-text, #000000);
 }
 
 /* Edit button */
@@ -138,15 +169,28 @@
 
 /* Match winner banner */
 .sb__winner {
-  background: rgba(255, 215, 0, 0.1);
-  border-top: 1px solid rgba(255, 215, 0, 0.25);
-  color: #FFD700;
+  background: color-mix(in srgb, var(--sb-serving, #FFD700) 10%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--sb-serving, #FFD700) 25%, transparent);
+  color: var(--sb-serving, #FFD700);
   text-align: center;
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   padding: 6px 14px;
+}
+
+/* Footer label */
+.sb__footer {
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 5px 16px;
+  margin: 6px auto 0;
+  display: inline-block;
+  max-width: 100%;
 }
 
 /* ══════════════════════════════════════════════════════════

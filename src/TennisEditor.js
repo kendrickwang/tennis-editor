@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Scoreboard from './Scoreboard';
+import ScoreboardCustomizer from './ScoreboardCustomizer';
 import PointTimeline from './PointTimeline';
 import VideoExporter from './VideoExporter';
 import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel, recomputeScores, computeServer } from './tennisScore';
 import { canBrowserPlayNatively, transcodeToH264 } from './transcodeVideo';
+import { DEFAULT_THEME } from './scoreboardTheme';
 import './TennisEditor.css';
 
 function fmtTime(s) {
@@ -33,6 +35,7 @@ export default function TennisEditor() {
   const [openMenuId, setOpenMenuId] = useState(null);
   // null = not transcoding; 0–1 = in progress
   const [transcodeProgress, setTranscodeProgress] = useState(null);
+  const [scoreboardTheme, setScoreboardTheme] = useState(DEFAULT_THEME);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -362,6 +365,7 @@ export default function TennisEditor() {
                 names={[p1Name, p2Name]}
                 serving={displayState.serving}
                 onServingChange={s => { if (s !== serving) setInitialServer(1 - initialServer); }}
+                theme={scoreboardTheme}
               />
             </div>
           </div>
@@ -383,6 +387,9 @@ export default function TennisEditor() {
             <span><kbd>R</kbd> P2 wins</span>
           </div>
 
+          {/* Scoreboard customizer */}
+          <ScoreboardCustomizer theme={scoreboardTheme} onChange={setScoreboardTheme} />
+
           {/* Export */}
           <VideoExporter
             videoFile={videoFile}
@@ -390,6 +397,7 @@ export default function TennisEditor() {
             fileName={fileName}
             names={[p1Name, p2Name]}
             serving={serving}
+            scoreboardTheme={scoreboardTheme}
           />
 
           {/* Point timeline */}

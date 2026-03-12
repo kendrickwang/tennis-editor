@@ -1,0 +1,294 @@
+/* ── Customizer wrapper ───────────────────────────────────── */
+.sbc {
+  width: 340px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+}
+
+/* ── Top toggle button ───────────────────────────────────── */
+.sbc__toggle-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  background: var(--surface-2, #131627);
+  border: 1px solid var(--border, #1C1F3C);
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text-2, #7B82A8);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.sbc__toggle-btn:hover,
+.sbc__toggle-btn--open {
+  color: var(--text, #EDF0FF);
+  border-color: var(--border-lit, #2E3268);
+}
+
+/* ── Expand chevron ─────────────────────────────────────── */
+.sbc__chevron {
+  display: inline-block;
+  transition: transform 0.2s;
+  font-size: 1rem;
+}
+.sbc__chevron--open {
+  transform: rotate(90deg);
+}
+
+/* ── Panel ───────────────────────────────────────────────── */
+.sbc__panel {
+  margin-top: 6px;
+  background: var(--surface, #0D0F1E);
+  border: 1px solid var(--border, #1C1F3C);
+  border-radius: var(--radius-sm, 8px);
+  overflow: hidden;
+}
+
+/* ── Preset pills ───────────────────────────────────────── */
+.sbc__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--border, #1C1F3C);
+}
+.sbc__preset-btn {
+  padding: 4px 10px;
+  background: var(--surface-2, #131627);
+  border: 1px solid var(--border, #1C1F3C);
+  border-radius: 99px;
+  color: var(--text-2, #7B82A8);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sbc__preset-btn:hover {
+  background: var(--border-lit, #2E3268);
+  color: var(--text, #EDF0FF);
+  border-color: var(--accent, #6366F1);
+}
+.sbc__preset-btn--reset {
+  color: var(--error, #F87171);
+  border-color: rgba(248, 113, 113, 0.25);
+}
+.sbc__preset-btn--reset:hover {
+  background: rgba(248, 113, 113, 0.1);
+  border-color: var(--error, #F87171);
+  color: var(--error, #F87171);
+}
+
+/* ── Collapsible sections ───────────────────────────────── */
+.sbc__section {
+  border-bottom: 1px solid var(--border, #1C1F3C);
+}
+.sbc__section:last-child {
+  border-bottom: none;
+}
+.sbc__section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  color: var(--text-2, #7B82A8);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.sbc__section-toggle:hover {
+  color: var(--text, #EDF0FF);
+}
+.sbc__section-body {
+  padding: 0 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Control rows ───────────────────────────────────────── */
+.sbc__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+}
+.sbc__label {
+  font-size: 0.68rem;
+  color: var(--text-2, #7B82A8);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 90px;
+}
+
+/* Color picker */
+.sbc__color-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sbc__color {
+  width: 28px;
+  height: 22px;
+  padding: 0 2px;
+  border: 1px solid var(--border, #1C1F3C);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+.sbc__color-val {
+  font-size: 0.62rem;
+  font-family: monospace;
+  color: var(--text-2, #7B82A8);
+  min-width: 48px;
+}
+
+/* Slider */
+.sbc__slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.sbc__slider {
+  flex: 1;
+  height: 3px;
+  accent-color: var(--accent, #6366F1);
+  cursor: pointer;
+}
+.sbc__slider-val {
+  font-size: 0.68rem;
+  color: var(--text-2, #7B82A8);
+  min-width: 30px;
+  text-align: right;
+  font-family: monospace;
+}
+
+/* Toggle switch */
+.sbc__toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+.sbc__toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0; height: 0;
+}
+.sbc__toggle-track {
+  width: 32px;
+  height: 18px;
+  background: var(--border, #1C1F3C);
+  border-radius: 99px;
+  transition: background 0.2s;
+  position: relative;
+}
+.sbc__toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 12px; height: 12px;
+  background: var(--text-2, #7B82A8);
+  border-radius: 50%;
+  transition: left 0.2s, background 0.2s;
+}
+.sbc__toggle input:checked ~ .sbc__toggle-track {
+  background: var(--accent, #6366F1);
+}
+.sbc__toggle input:checked ~ .sbc__toggle-track::after {
+  left: 17px;
+  background: #ffffff;
+}
+
+/* Text input */
+.sbc__text {
+  flex: 1;
+  background: var(--surface-2, #131627);
+  border: 1px solid var(--border, #1C1F3C);
+  border-radius: 4px;
+  color: var(--text, #EDF0FF);
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+.sbc__text:focus {
+  border-color: var(--accent, #6366F1);
+}
+
+/* Select */
+.sbc__select {
+  flex: 1;
+  background: var(--surface-2, #131627);
+  border: 1px solid var(--border, #1C1F3C);
+  border-radius: 4px;
+  color: var(--text, #EDF0FF);
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.sbc__select:focus {
+  border-color: var(--accent, #6366F1);
+}
+.sbc__select option {
+  background: var(--surface-2, #131627);
+}
+
+/* Badge upload */
+.sbc__badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sbc__badge-preview {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 3px;
+  border: 1px solid var(--border, #1C1F3C);
+}
+.sbc__badge-empty {
+  font-size: 0.62rem;
+  color: var(--text-3, #3A4068);
+}
+.sbc__badge-btn {
+  padding: 3px 8px;
+  background: var(--surface-2, #131627);
+  border: 1px solid var(--border, #1C1F3C);
+  border-radius: 4px;
+  color: var(--text-2, #7B82A8);
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sbc__badge-btn:hover {
+  border-color: var(--accent, #6366F1);
+  color: var(--text, #EDF0FF);
+}
+.sbc__badge-clear {
+  background: none;
+  border: none;
+  color: var(--text-3, #3A4068);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 2px;
+  transition: color 0.15s;
+}
+.sbc__badge-clear:hover {
+  color: var(--error, #F87171);
+}

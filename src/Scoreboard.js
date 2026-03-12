@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DEFAULT_THEME } from './scoreboardTheme';
 import './Scoreboard.css';
 
 function playerPtDisplay(p1, p2, isTb, idx) {
@@ -25,9 +26,36 @@ function displayToPts(val) {
 
 const MAX_SETS = 3;
 
-export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'], serving = 0, onServingChange }) {
+export default function Scoreboard({
+  score,
+  onScoreChange,
+  names = ['P1', 'P2'],
+  serving = 0,
+  onServingChange,
+  theme = DEFAULT_THEME,
+}) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(null);
+
+  // Build CSS variable map from theme
+  const cssVars = {
+    '--sb-bg':               theme.bg,
+    '--sb-divider':          theme.dividerColor,
+    '--sb-name-text':        theme.nameText,
+    '--sb-name-weight':      theme.nameFontWeight,
+    '--sb-set-inactive-bg':  theme.setInactiveBg,
+    '--sb-set-inactive':     theme.setInactiveText,
+    '--sb-set-active-bg':    theme.setActiveBg,
+    '--sb-set-active-text':  theme.setActiveText,
+    '--sb-set-win-text':     theme.setWinText,
+    '--sb-game-bg':          theme.gameScoreBg,
+    '--sb-game-text':        theme.gameScoreText,
+    '--sb-serving':          theme.servingColor,
+    '--sb-cell-pad-v':       `${theme.cellPaddingV}px`,
+    '--sb-outer-radius':     `${theme.outerRadius}px`,
+    '--sb-cell-radius':      `${theme.cellRadius}px`,
+    '--sb-font':             theme.fontFamily,
+  };
 
   function openEdit() {
     const p1d = playerPtDisplay(score.currentGame[0], score.currentGame[1], score.isTiebreak, 0);
@@ -68,7 +96,7 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'],
     setEditing(false);
   }
 
-  // Only show sets that have started (completed or currently active) — hide future slots
+  // Only show sets that have started (completed or currently active)
   const allSets = Array.from({ length: MAX_SETS }, (_, i) => {
     if (i < score.sets.length) {
       return { ...score.sets[i], status: 'completed' };
@@ -79,9 +107,12 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'],
     return null;
   }).filter(s => s !== null);
 
+  const subtitles = [theme.p1Subtitle, theme.p2Subtitle];
+  const badges    = [theme.p1Badge,    theme.p2Badge];
+
   if (editing) {
     return (
-      <div className="sb sb--edit">
+      <div className="sb sb--edit" style={cssVars}>
         <div className="sb__edit-title">Edit Score</div>
         <div className="sb__edit-field">
           <label>Past sets (e.g. 6-3 7-5)</label>
@@ -144,12 +175,14 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'],
   }
 
   return (
-    <div className="sb">
+    <div className="sb" style={cssVars}>
       <table className="sb__table">
         <tbody>
           {[0, 1].map(pi => {
             const pt = playerPtDisplay(score.currentGame[0], score.currentGame[1], score.isTiebreak, pi);
             const isServing = serving === pi;
+            const subtitle  = theme.subtitleVisible ? subtitles[pi] : null;
+            const badge     = badges[pi];
             return (
               <tr key={pi} className="sb__row">
                 <td
@@ -160,7 +193,11 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'],
                   ●
                 </td>
                 <td className={`sb__td sb__td--name ${score.matchWinner === pi + 1 ? 'sb__td--winner' : ''}`}>
-                  {names[pi].toUpperCase()}
+                  <span className="sb__name-cell">
+                    <span className="sb__name-text">{names[pi].toUpperCase()}</span>
+                    {subtitle && <span className="sb__subtitle">{subtitle}</span>}
+                    {badge && <img className="sb__badge" src={badge} alt="" />}
+                  </span>
                 </td>
                 {allSets.map((s, si) => {
                   const isCurrent = s?.status === 'current';
@@ -191,6 +228,18 @@ export default function Scoreboard({ score, onScoreChange, names = ['P1', 'P2'],
       </table>
       {score.matchWinner && (
         <div className="sb__winner">{names[score.matchWinner - 1].toUpperCase()} WINS</div>
+      )}
+      {theme.footerVisible && theme.footerText && (
+        <div
+          className="sb__footer"
+          style={{
+            background:   theme.footerBg,
+            color:        theme.footerTextColor,
+            borderRadius: theme.footerPill ? '99px' : `${theme.outerRadius || 4}px`,
+          }}
+        >
+          {theme.footerText}
+        </div>
       )}
     </div>
   );
