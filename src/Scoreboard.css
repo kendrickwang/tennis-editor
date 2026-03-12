@@ -94,7 +94,7 @@
 
 /* Set score cells */
 .sb__td--set {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--sb-set-inactive, rgba(255, 255, 255, 0.55));
   background: var(--sb-set-inactive-bg, transparent);
@@ -128,9 +128,9 @@
   font-size: 0.7rem;
 }
 
-/* Game points — right column, larger */
+/* Game points — right column */
 .sb__td--pt {
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   font-weight: 900;
   background: var(--sb-game-bg, #FFD700);
   color: var(--sb-game-text, #000000);
