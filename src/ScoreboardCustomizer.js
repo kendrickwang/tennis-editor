@@ -109,17 +109,17 @@ function ColorPair({ bgLabel, textLabel, bgValue, textValue, onBgChange, onTextC
   const grade = contrastGrade(ratio);
   const needsFix = grade !== 'good';
 
-  function handleBgChange(hex) {
-    onBgChange(hex);
-    onTextChange(autoTextColor(hex));
-  }
+  // NOTE: Do NOT wrap onBgChange — each parent callback already handles text-color
+  // sync atomically inside a single setMany() call. Calling onTextChange separately
+  // after onBgChange causes a stale-closure race: both calls spread the same old
+  // theme, and the second call wins, reverting the bg change entirely.
 
   return (
     <div className="sbc__color-pair">
       <div className="sbc__color-pair-row">
         <div className="sbc__color-pair-cell">
           <span className="sbc__pair-label">{bgLabel}</span>
-          <HexColorInput value={bgValue} onChange={handleBgChange} />
+          <HexColorInput value={bgValue} onChange={onBgChange} />
         </div>
         <div className="sbc__color-pair-cell">
           <span className="sbc__pair-label">{textLabel}</span>
