@@ -3,6 +3,7 @@ import Scoreboard from './Scoreboard';
 import PointTimeline from './PointTimeline';
 import VideoExporter from './VideoExporter';
 import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel, recomputeScores, computeServer } from './tennisScore';
+import { canBrowserPlayNatively, transcodeToH264 } from './transcodeVideo';
 import './TennisEditor.css';
 
 function fmtTime(s) {
@@ -30,6 +31,8 @@ export default function TennisEditor() {
   const [status, setStatus] = useState({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+  // null = not transcoding; 0–1 = in progress
+  const [transcodeProgress, setTranscodeProgress] = useState(null);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -83,18 +86,47 @@ export default function TennisEditor() {
   }, [videoSrc]);
 
   // ── File handling ──────────────────────────────────────────
-  function handleFile(file) {
-    if (!file || !file.type.startsWith('video/')) return;
-    const url = URL.createObjectURL(file);
-    setVideoSrc(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
-    setVideoFile(file);
-    setFileName(file.name);
+  async function handleFile(file) {
+    if (!file) return;
+    // Accept video/* MIME types, or files with no detected type (exotic formats)
+    if (file.type && !file.type.startsWith('video/')) return;
+
+    // Reset match state immediately
     setDuration(0);
     setScore(INITIAL_SCORE);
     setInitialServer(0);
     setPoints([]);
     setPendingStart(null);
-    setStatus({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
+    setFileName(file.name);
+    setTranscodeProgress(null);
+
+    // ── Check native support ──────────────────────────────────
+    const nativeOk = await canBrowserPlayNatively(file);
+
+    if (nativeOk) {
+      const url = URL.createObjectURL(file);
+      setVideoSrc(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
+      setVideoFile(file);
+      setStatus({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
+      return;
+    }
+
+    // ── Transcode to H.264 MP4 via FFmpeg WASM ────────────────
+    setTranscodeProgress(0);
+    setStatus({ text: 'Converting video for browser compatibility…', kind: 'transcoding' });
+
+    try {
+      const blob = await transcodeToH264(file, (p) => setTranscodeProgress(p));
+      const url = URL.createObjectURL(blob);
+      setVideoSrc(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
+      setVideoFile(blob);
+      setStatus({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
+    } catch (err) {
+      console.error('Transcode failed:', err);
+      setStatus({ text: `Could not convert video: ${err.message}`, kind: 'error' });
+    } finally {
+      setTranscodeProgress(null);
+    }
   }
 
   // ── Keyboard shortcuts ─────────────────────────────────────
@@ -236,17 +268,34 @@ export default function TennisEditor() {
 
       {!videoSrc ? (
         <div
-          className={`te__drop${isDragging ? ' te__drop--active' : ''}`}
-          onClick={() => fileInputRef.current.click()}
+          className={`te__drop${isDragging ? ' te__drop--active' : ''}${transcodeProgress !== null ? ' te__drop--transcoding' : ''}`}
+          onClick={() => transcodeProgress === null && fileInputRef.current.click()}
           onDrop={e => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]); }}
           onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
         >
-          <UploadIcon />
-          <p className="te__drop-prompt">Drop a video here or <span>browse</span></p>
-          <p className="te__drop-hint">MP4, MOV, AVI, WebM and more</p>
-          <input ref={fileInputRef} type="file" accept="video/*"
-            onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
+          {transcodeProgress !== null ? (
+            <div className="te__transcode">
+              <div className="te__transcode-spinner" />
+              <p className="te__transcode-label">Converting video…</p>
+              <div className="te__transcode-bar-wrap">
+                <div
+                  className="te__transcode-bar-fill"
+                  style={{ width: `${Math.round(transcodeProgress * 100)}%` }}
+                />
+              </div>
+              <p className="te__transcode-pct">{Math.round(transcodeProgress * 100)}%</p>
+              <p className="te__transcode-hint">Transcoding to H.264 for browser compatibility. This may take a few minutes for long videos.</p>
+            </div>
+          ) : (
+            <>
+              <UploadIcon />
+              <p className="te__drop-prompt">Drop a video here or <span>browse</span></p>
+              <p className="te__drop-hint">MP4, MOV, AVI, MKV, WebM, and more — HEVC/H.265 auto-converted</p>
+              <input ref={fileInputRef} type="file" accept="video/*"
+                onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
+            </>
+          )}
         </div>
       ) : (
         <div className="te__workspace">
