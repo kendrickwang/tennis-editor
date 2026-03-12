@@ -22,16 +22,19 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
   const NAME_W = 138;
   const SET_W  = 40;
   const PT_W   = 58;
-  const W      = DOT_W + NAME_W + SET_W * MAX_SETS + PT_W; // 340
-  const ROW_H  = theme.cellPaddingV * 2 + 28; // ~50 at default padding
+  const PAD_H  = theme.paddingH ?? 0;
+  const W      = DOT_W + NAME_W + SET_W * MAX_SETS + PT_W + PAD_H * 2; // 340 + horizontal padding
+  const ROW_H  = (theme.cellPaddingV ?? 13) * 2 + 28;
   const H      = ROW_H * 2;
 
-  // Footer height if enabled
-  const FOOTER_H = theme.footerVisible && theme.footerText ? 24 : 0;
+  // Footer: rendered outside the main bg, with a transparent gap
+  const FOOTER_GAP  = theme.footerVisible && theme.footerText ? (theme.footerGap ?? 8) : 0;
+  const FOOTER_PILL = theme.footerVisible && theme.footerText ? 24 : 0;
+  const TOTAL_H     = H + FOOTER_GAP + FOOTER_PILL;
 
   const canvas = document.createElement('canvas');
   canvas.width  = W * SCALE;
-  canvas.height = (H + FOOTER_H) * SCALE;
+  canvas.height = TOTAL_H * SCALE;
   const ctx = canvas.getContext('2d');
   ctx.scale(SCALE, SCALE);
 
@@ -46,12 +49,13 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
     return null;
   });
 
-  const xDot  = 0;
-  const xName = DOT_W;
+  // Offsets — shift content right by PAD_H
+  const xDot  = PAD_H;
+  const xName = PAD_H + DOT_W;
   const xSets = Array.from({ length: MAX_SETS }, (_, i) => xName + NAME_W + i * SET_W);
   const xPt   = xName + NAME_W + SET_W * MAX_SETS;
 
-  // ── Background ──────────────────────────────────────────
+  // ── Main scoreboard background ───────────────────────────
   ctx.fillStyle = T.bg;
   const r = T.outerRadius || 3;
   ctx.beginPath();
@@ -81,12 +85,33 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
       ctx.fill();
     }
 
+    // Player badge / logo (if set)
+    const badgeData = pi === 0 ? T.p1Badge : T.p2Badge;
+    let nameOffsetX = xName + 6;
+
+    if (badgeData) {
+      // Draw badge inline before the name — badge height capped to 1.2× name font size
+      const badgeSize = Math.round(18 * 1.2); // 18px font * 1.2 = ~21px
+      try {
+        const img = new window.Image();
+        img.src = badgeData;
+        // Images may not be loaded synchronously in canvas; skip if not ready
+        if (img.complete && img.naturalWidth > 0) {
+          const aspect = img.naturalWidth / img.naturalHeight;
+          const bH = badgeSize;
+          const bW = Math.min(bH * aspect, 28);
+          ctx.drawImage(img, nameOffsetX, y + ROW_H / 2 - bH / 2, bW, bH);
+          nameOffsetX += bW + 5;
+        }
+      } catch (_) { /* ignore */ }
+    }
+
     // Player name
     ctx.fillStyle = score.matchWinner === pi + 1 ? T.servingColor : T.nameText;
     ctx.font = `${T.nameFontWeight || 700} 18px ${T.fontFamily}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(names[pi].toUpperCase(), xName + 6, y + ROW_H / 2);
+    ctx.fillText(names[pi].toUpperCase(), nameOffsetX, y + ROW_H / 2);
 
     // Subtitle (e.g. UTR rating)
     if (T.subtitleVisible) {
@@ -96,7 +121,7 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
         ctx.font = `600 10px ${T.fontFamily}`;
         ctx.fillStyle = T.nameText;
         ctx.globalAlpha = 0.7;
-        ctx.fillText(subtitle.toUpperCase(), xName + 6 + nameWidth + 6, y + ROW_H / 2);
+        ctx.fillText(subtitle.toUpperCase(), nameOffsetX + nameWidth + 6, y + ROW_H / 2);
         ctx.globalAlpha = 1;
       }
     }
@@ -153,6 +178,20 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
       ctx.fillRect(xPt, y, PT_W, ROW_H);
     }
 
+    // PT cell border (configurable outline)
+    const ptBorderW = T.gameScoreBorderWidth ?? 0;
+    if (ptBorderW > 0) {
+      ctx.strokeStyle = T.gameScoreBorderColor || T.setActiveBg;
+      ctx.lineWidth = ptBorderW;
+      if (cr > 0) {
+        ctx.beginPath();
+        ctx.roundRect(xPt + ptBorderW / 2, y + ptBorderW / 2, PT_W - ptBorderW, ROW_H - ptBorderW, cr);
+        ctx.stroke();
+      } else {
+        ctx.strokeRect(xPt + ptBorderW / 2, y + ptBorderW / 2, PT_W - ptBorderW, ROW_H - ptBorderW);
+      }
+    }
+
     // PT column left divider
     ctx.strokeStyle = T.dividerColor;
     ctx.lineWidth = 0.5;
@@ -180,22 +219,23 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
     ctx.fillText(`${names[score.matchWinner - 1].toUpperCase()} WINS`, W / 2, H - 10);
   }
 
-  // ── Footer label ─────────────────────────────────────────
-  if (FOOTER_H > 0) {
+  // ── Footer label — drawn outside main bg with transparent gap ──
+  if (FOOTER_PILL > 0) {
+    const fY  = H + FOOTER_GAP;
+    const fW  = Math.min(W * 0.8, 260);
+    const fX  = (W - fW) / 2;
+    const pillR = T.footerPill ? FOOTER_PILL / 2 : (T.outerRadius || 3);
+
     ctx.fillStyle = T.footerBg;
-    const pillR = T.footerPill ? FOOTER_H / 2 : (T.outerRadius || 3);
-    const fY = H + 4;
-    const fW = Math.min(W * 0.8, 260);
-    const fX = (W - fW) / 2;
     ctx.beginPath();
-    ctx.roundRect(fX, fY, fW, FOOTER_H - 8, pillR);
+    ctx.roundRect(fX, fY, fW, FOOTER_PILL - 2, pillR);
     ctx.fill();
 
     ctx.fillStyle = T.footerTextColor;
     ctx.font = `bold 10px ${T.fontFamily}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(T.footerText.toUpperCase(), W / 2, fY + (FOOTER_H - 8) / 2);
+    ctx.fillText(T.footerText.toUpperCase(), W / 2, fY + (FOOTER_PILL - 2) / 2);
   }
 
   return canvas;

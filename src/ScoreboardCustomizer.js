@@ -1,9 +1,33 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   PRESETS, FONT_OPTIONS, LAYOUT_RULES,
   contrastRatio, contrastGrade, autoTextColor, sanitizeTheme, getContrastViolations,
 } from './scoreboardTheme';
+import Scoreboard from './Scoreboard';
 import './ScoreboardCustomizer.css';
+
+// ── Preview score states ──────────────────────────────────
+
+const PREVIEW_NAMES = ['DJOKOVIC', 'ALCARAZ'];
+
+const PREVIEW_SCORE_S1 = {
+  sets: [],
+  currentSet: [3, 2],
+  currentGame: [2, 1], // 30–15
+  isTiebreak: false,
+  matchWinner: null,
+};
+
+const PREVIEW_SCORE_TB = {
+  sets: [
+    { p1: 6, p2: 4 },
+    { p1: 3, p2: 6 },
+  ],
+  currentSet: [5, 5],
+  currentGame: [7, 5], // 3rd-set tiebreak
+  isTiebreak: true,
+  matchWinner: null,
+};
 
 // ── Shared sub-components ────────────────────────────────────
 
@@ -16,6 +40,66 @@ function Section({ title, children, defaultOpen = false }) {
         <span className={`sbc__chevron ${open ? 'sbc__chevron--open' : ''}`}>›</span>
       </button>
       {open && <div className="sbc__section-body">{children}</div>}
+    </div>
+  );
+}
+
+// ── Hex-only color input ──────────────────────────────────────
+// Shows a color swatch (opens native picker) + a hex text field.
+// The native picker is still available for convenience, but the primary
+// interface is the hex field — no RGB/HSL columns in view.
+
+function HexColorInput({ value, onChange }) {
+  const hex = toHex(value);
+  const [draft, setDraft] = useState(hex);
+  const textRef = useRef(null);
+
+  // Sync when external value changes and the text field isn't focused
+  useEffect(() => {
+    if (document.activeElement !== textRef.current) {
+      setDraft(toHex(value));
+    }
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleSwatch(e) {
+    const v = e.target.value;
+    setDraft(v);
+    onChange(v);
+  }
+
+  function handleText(e) {
+    const v = e.target.value;
+    setDraft(v);
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v);
+  }
+
+  function handleBlur(e) {
+    // If left with an incomplete hex, revert to current valid value
+    if (!/^#[0-9a-fA-F]{6}$/.test(e.target.value)) {
+      setDraft(toHex(value));
+    }
+  }
+
+  return (
+    <div className="sbc__hex-wrap">
+      <input
+        type="color"
+        className="sbc__color-swatch"
+        value={hex}
+        onChange={handleSwatch}
+        title="Click to open color picker"
+      />
+      <input
+        ref={textRef}
+        type="text"
+        className="sbc__hex-text"
+        value={draft}
+        maxLength={7}
+        spellCheck={false}
+        placeholder="#000000"
+        onChange={handleText}
+        onBlur={handleBlur}
+      />
     </div>
   );
 }
@@ -35,13 +119,11 @@ function ColorPair({ bgLabel, textLabel, bgValue, textValue, onBgChange, onTextC
       <div className="sbc__color-pair-row">
         <div className="sbc__color-pair-cell">
           <span className="sbc__pair-label">{bgLabel}</span>
-          <input type="color" className="sbc__color" value={toHex(bgValue)}
-            onChange={e => handleBgChange(e.target.value)} />
+          <HexColorInput value={bgValue} onChange={handleBgChange} />
         </div>
         <div className="sbc__color-pair-cell">
           <span className="sbc__pair-label">{textLabel}</span>
-          <input type="color" className="sbc__color" value={toHex(textValue)}
-            onChange={e => onTextChange(e.target.value)} />
+          <HexColorInput value={textValue} onChange={onTextChange} />
         </div>
         <div className={`sbc__contrast sbc__contrast--${grade}`} title={`${ratio.toFixed(1)}:1 contrast`}>
           {ratio.toFixed(1)}
@@ -70,9 +152,7 @@ function ColorRow({ label, value, onChange, contrastAgainst }) {
     <div className="sbc__row">
       <label className="sbc__label">{label}</label>
       <div className="sbc__color-wrap">
-        <input type="color" className="sbc__color" value={toHex(value)}
-          onChange={e => onChange(e.target.value)} />
-        <span className="sbc__color-val">{toHex(value)}</span>
+        <HexColorInput value={value} onChange={onChange} />
         {grade && (
           <span className={`sbc__contrast sbc__contrast--${grade}`} title={`${ratio.toFixed(1)}:1 contrast`}>
             {ratio.toFixed(1)}
@@ -133,6 +213,34 @@ function toHex(color) {
     const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
     return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
   } catch { return '#000000'; }
+}
+
+// ── Scaled scoreboard preview ─────────────────────────────────
+
+function ScorePreview({ score, theme, label }) {
+  // Estimate scoreboard height to size the wrapper correctly
+  const rowH    = (theme.cellPaddingV ?? 13) * 2 + 28;
+  const mainH   = rowH * 2;
+  // Footer adds gap + ~24px pill height when visible
+  const footerH = (theme.footerVisible && theme.footerText)
+    ? (theme.footerGap ?? 8) + 24 : 0;
+  const totalH  = mainH + footerH;
+
+  const SCALE = 0.46;
+
+  return (
+    <div className="sbc__score-preview-col">
+      <span className="sbc__score-preview-label">{label}</span>
+      <div
+        className="sbc__score-preview-wrap"
+        style={{ height: Math.ceil(totalH * SCALE) }}
+      >
+        <div style={{ transform: `scale(${SCALE})`, transformOrigin: 'top left', pointerEvents: 'none' }}>
+          <Scoreboard theme={theme} score={score} names={PREVIEW_NAMES} serving={0} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Main component ───────────────────────────────────────────
@@ -202,6 +310,22 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
         </button>
       </div>
 
+      {/* ── Live Preview ─────────────────────────── */}
+      <Section title="Live Preview" defaultOpen>
+        <div className="sbc__preview-row">
+          <ScorePreview
+            label="1st set"
+            score={PREVIEW_SCORE_S1}
+            theme={theme}
+          />
+          <ScorePreview
+            label="3rd set tiebreak"
+            score={PREVIEW_SCORE_TB}
+            theme={theme}
+          />
+        </div>
+      </Section>
+
       {/* ── Colors ──────────────────────────────── */}
       <Section title="Colors" defaultOpen>
         <ColorRow label="Background" value={theme.bg} onChange={v => set('bg', v)} />
@@ -215,7 +339,7 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
           })}
           onTextChange={v => setMany({ setActiveText: v, gameScoreText: v })}
         />
-        <ColorRow label="Player name"   value={theme.nameText}     onChange={v => set('nameText', v)}     contrastAgainst={theme.bg} />
+        <ColorRow label="Player names"  value={theme.nameText}     onChange={v => set('nameText', v)}     contrastAgainst={theme.bg} />
         <ColorRow label="Serving dot"   value={theme.servingColor} onChange={v => set('servingColor', v)} contrastAgainst={theme.bg} />
         <ColorRow label="Set won text"  value={theme.setWinText}   onChange={v => set('setWinText', v)}   contrastAgainst={theme.bg} />
       </Section>
@@ -259,6 +383,28 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
         {theme.cellRadius > theme.outerRadius + 2 && (
           <div className="sbc__rule-warn">Cell radius capped to outer radius + 2</div>
         )}
+        <SliderRow label="H. padding"
+          value={theme.paddingH ?? 0}
+          min={LAYOUT_RULES.paddingH.min} max={LAYOUT_RULES.paddingH.max}
+          unit="px"
+          onChange={v => set('paddingH', v)} />
+      </Section>
+
+      {/* ── Game score border ────────────────────── */}
+      <Section title="Game score border">
+        <SliderRow label="Border width"
+          value={theme.gameScoreBorderWidth ?? 0}
+          min={LAYOUT_RULES.gameScoreBorderWidth.min}
+          max={LAYOUT_RULES.gameScoreBorderWidth.max}
+          unit="px"
+          onChange={v => set('gameScoreBorderWidth', v)} />
+        {(theme.gameScoreBorderWidth ?? 0) > 0 && (
+          <ColorRow
+            label="Border color"
+            value={theme.gameScoreBorderColor || theme.setActiveBg}
+            onChange={v => set('gameScoreBorderColor', v)}
+          />
+        )}
       </Section>
 
       {/* ── Footer label ────────────────────────── */}
@@ -274,6 +420,11 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
             onTextChange={v => set('footerTextColor', v)}
           />
           <ToggleRow label="Pill shape" checked={theme.footerPill} onChange={v => set('footerPill', v)} />
+          <SliderRow label="Gap above"
+            value={theme.footerGap ?? 8}
+            min={LAYOUT_RULES.footerGap.min} max={LAYOUT_RULES.footerGap.max}
+            unit="px"
+            onChange={v => set('footerGap', v)} />
         </>}
       </Section>
 
@@ -291,10 +442,10 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
           const badge    = theme[badgeKey];
           return (
             <div key={p} className="sbc__row">
-              <label className="sbc__label">P{p} badge</label>
+              <label className="sbc__label">P{p} logo</label>
               <div className="sbc__badge-wrap">
                 {badge
-                  ? <img className="sbc__badge-preview" src={badge} alt={`P${p} badge`} />
+                  ? <img className="sbc__badge-preview" src={badge} alt={`P${p} logo`} />
                   : <span className="sbc__badge-empty">None</span>}
                 <button className="sbc__badge-btn" onClick={() => badgeRef.current.click()}>Upload</button>
                 {badge && <button className="sbc__badge-clear" onClick={() => set(badgeKey, null)}>✕</button>}
