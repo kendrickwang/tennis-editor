@@ -4,7 +4,7 @@ import { toBlobURL } from '@ffmpeg/util';
 import { drawScoreboardToCanvas, canvasToUint8Array } from './scoreboardCanvas';
 import './VideoExporter.css';
 
-export default function VideoExporter({ videoFile, points, fileName, names = ['P1', 'P2'], serving = 0 }) {
+export default function VideoExporter({ videoFile, points, fileName, names = ['P1', 'P2'], serving = 0, scoreboardTheme }) {
   const [phase, setPhase] = useState('idle');
   const [progress, setProgress] = useState(0);
   const [stepLabel, setStepLabel] = useState('');
@@ -76,7 +76,7 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
         if (showScoreboard) {
           // Render scoreboard for this point's score state and burn it in
           phaseRef.current = 'segment';
-          const canvas = drawScoreboardToCanvas(pt.scoreBefore, names, serving);
+          const canvas = drawScoreboardToCanvas(pt.scoreBefore, names, pt.serving ?? serving, scoreboardTheme);
           const pngData = await canvasToUint8Array(canvas);
           const overlayName = `overlay${i}.png`;
           await ffmpeg.writeFile(overlayName, pngData);
