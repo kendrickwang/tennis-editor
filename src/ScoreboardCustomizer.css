@@ -278,6 +278,7 @@
   object-fit: contain;
   border-radius: 3px;
   border: 1px solid var(--border, #1C1F3C);
+  background: transparent;
 }
 .sbc__badge-empty {
   font-size: 0.62rem;
@@ -446,4 +447,14 @@
   border: 1px solid rgba(251, 191, 36, 0.2);
   border-radius: 4px;
   padding: 3px 8px;
+}
+
+/* ── Embedded mode (inside modal) ───────────────────────── */
+.sbc__panel--embedded {
+  margin-top: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow-y: auto;
+  height: 100%;
 }

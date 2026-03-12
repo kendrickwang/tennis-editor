@@ -109,7 +109,7 @@ export const FONT_OPTIONS = [
 
 // Hard clamping ranges for numeric layout values
 export const LAYOUT_RULES = {
-  cellPaddingV: { min: 6,  max: 18 }, // < 6px feels cramped; > 18px scoreboard too tall
+  cellPaddingV: { min: 10, max: 18 }, // < 10px feels cramped; > 18px scoreboard too tall
   outerRadius:  { min: 0,  max: 12 }, // > 12px looks like a pill, not a scoreboard
   cellRadius:   { min: 0,  max: 8  }, // cells should never be rounder than the container
 };
