@@ -1,6 +1,11 @@
 import { useState, useRef } from 'react';
-import { PRESETS, FONT_OPTIONS, DEFAULT_THEME } from './scoreboardTheme';
+import {
+  PRESETS, FONT_OPTIONS, DEFAULT_THEME, LAYOUT_RULES,
+  contrastRatio, contrastGrade, autoTextColor, sanitizeTheme, getContrastViolations,
+} from './scoreboardTheme';
 import './ScoreboardCustomizer.css';
+
+// ── Shared sub-components ────────────────────────────────────
 
 function Section({ title, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -15,13 +20,83 @@ function Section({ title, children, defaultOpen = false }) {
   );
 }
 
-function ColorRow({ label, value, onChange }) {
+/** Inline contrast badge: shows ratio + colour-coded grade dot */
+function ContrastBadge({ fg, bg }) {
+  if (!fg?.startsWith('#') || !bg?.startsWith('#')) return null;
+  const ratio = contrastRatio(fg, bg);
+  const grade = contrastGrade(ratio);
+  return (
+    <span className={`sbc__contrast sbc__contrast--${grade}`} title={`Contrast ${ratio.toFixed(1)}:1`}>
+      {ratio.toFixed(1)}
+    </span>
+  );
+}
+
+/**
+ * A paired color row: background + text picker side-by-side.
+ * When the background changes the text color is auto-adjusted to keep contrast ≥ 4.5:1.
+ * An auto-fix button appears whenever contrast is poor/ok.
+ */
+function ColorPair({ bgLabel, textLabel, bgValue, textValue, onBgChange, onTextChange }) {
+  const ratio = contrastRatio(bgValue, textValue);
+  const grade = contrastGrade(ratio);
+  const needsFix = grade !== 'good';
+
+  function handleBgChange(hex) {
+    onBgChange(hex);
+    // Auto-update text for contrast whenever bg changes
+    onTextChange(autoTextColor(hex));
+  }
+
+  return (
+    <div className="sbc__color-pair">
+      <div className="sbc__color-pair-row">
+        <div className="sbc__color-pair-cell">
+          <span className="sbc__pair-label">{bgLabel}</span>
+          <input type="color" className="sbc__color" value={toHex(bgValue)}
+            onChange={e => handleBgChange(e.target.value)} />
+        </div>
+        <div className="sbc__color-pair-cell">
+          <span className="sbc__pair-label">{textLabel}</span>
+          <input type="color" className="sbc__color" value={toHex(textValue)}
+            onChange={e => onTextChange(e.target.value)} />
+        </div>
+        <div className={`sbc__contrast sbc__contrast--${grade}`} title={`${ratio.toFixed(1)}:1 contrast`}>
+          {ratio.toFixed(1)}
+        </div>
+        {needsFix && (
+          <button
+            className="sbc__autofix-btn"
+            title="Auto-fix text color for readability"
+            onClick={() => onTextChange(autoTextColor(bgValue))}
+          >
+            Fix ↺
+          </button>
+        )}
+      </div>
+      <div className="sbc__pair-preview" style={{ background: bgValue, color: textValue }}>
+        Aa 15 30 40
+      </div>
+    </div>
+  );
+}
+
+/** Single color row (no paired text counterpart) */
+function ColorRow({ label, value, onChange, contrastAgainst }) {
+  const ratio = contrastAgainst ? contrastRatio(value, contrastAgainst) : null;
+  const grade = ratio ? contrastGrade(ratio) : null;
   return (
     <div className="sbc__row">
       <label className="sbc__label">{label}</label>
       <div className="sbc__color-wrap">
-        <input type="color" className="sbc__color" value={toHex(value)} onChange={e => onChange(e.target.value)} />
+        <input type="color" className="sbc__color" value={toHex(value)}
+          onChange={e => onChange(e.target.value)} />
         <span className="sbc__color-val">{toHex(value)}</span>
+        {grade && (
+          <span className={`sbc__contrast sbc__contrast--${grade}`} title={`${ratio.toFixed(1)}:1 contrast`}>
+            {ratio.toFixed(1)}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -32,11 +107,9 @@ function SliderRow({ label, value, min, max, unit = '', onChange }) {
     <div className="sbc__row">
       <label className="sbc__label">{label}</label>
       <div className="sbc__slider-wrap">
-        <input
-          type="range" min={min} max={max} value={value}
+        <input type="range" min={min} max={max} value={value}
           className="sbc__slider"
-          onChange={e => onChange(Number(e.target.value))}
-        />
+          onChange={e => onChange(Number(e.target.value))} />
         <span className="sbc__slider-val">{value}{unit}</span>
       </div>
     </div>
@@ -59,23 +132,17 @@ function TextRow({ label, value, placeholder, onChange, maxLength }) {
   return (
     <div className="sbc__row">
       <label className="sbc__label">{label}</label>
-      <input
-        className="sbc__text"
-        type="text"
-        value={value}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        onChange={e => onChange(e.target.value)}
-      />
+      <input className="sbc__text" type="text" value={value} placeholder={placeholder}
+        maxLength={maxLength} onChange={e => onChange(e.target.value)} />
     </div>
   );
 }
 
-// Convert any CSS color to hex (best-effort for color inputs)
+// ── Utilities ────────────────────────────────────────────────
+
 function toHex(color) {
   if (!color) return '#000000';
   if (color.startsWith('#') && color.length === 7) return color;
-  // For rgba/rgb, render to canvas to extract hex
   try {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 1;
@@ -84,22 +151,28 @@ function toHex(color) {
     ctx.fillRect(0, 0, 1, 1);
     const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
     return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
-  } catch {
-    return '#000000';
-  }
+  } catch { return '#000000'; }
 }
+
+// ── Main component ───────────────────────────────────────────
 
 export default function ScoreboardCustomizer({ theme, onChange }) {
   const [open, setOpen] = useState(false);
   const p1BadgeRef = useRef(null);
   const p2BadgeRef = useRef(null);
 
+  /** Update one key, sanitise layout constraints */
   function set(key, value) {
-    onChange({ ...theme, [key]: value });
+    onChange(sanitizeTheme({ ...theme, [key]: value }));
+  }
+
+  /** Update multiple keys at once (for linked pairs) */
+  function setMany(updates) {
+    onChange(sanitizeTheme({ ...theme, ...updates }));
   }
 
   function applyPreset(name) {
-    onChange({ ...PRESETS[name] });
+    onChange(sanitizeTheme({ ...PRESETS[name] }));
   }
 
   function handleBadge(player, file) {
@@ -109,57 +182,92 @@ export default function ScoreboardCustomizer({ theme, onChange }) {
     reader.readAsDataURL(file);
   }
 
-  function resetTheme() {
-    onChange({ ...DEFAULT_THEME });
-  }
+  // Active violations (only shown when panel is open)
+  const violations = open ? getContrastViolations(theme) : [];
 
   return (
     <div className="sbc">
-      <button className={`sbc__toggle-btn ${open ? 'sbc__toggle-btn--open' : ''}`} onClick={() => setOpen(o => !o)}>
+      <button
+        className={`sbc__toggle-btn ${open ? 'sbc__toggle-btn--open' : ''}`}
+        onClick={() => setOpen(o => !o)}
+      >
         <span>✦ Customize scoreboard</span>
-        <span className={`sbc__chevron ${open ? 'sbc__chevron--open' : ''}`}>›</span>
+        <div className="sbc__toggle-right">
+          {/* Show violation count on the closed button */}
+          {!open && violations.length === 0 && getContrastViolations(theme).length > 0 && null}
+          {getContrastViolations(theme).length > 0 && (
+            <span className="sbc__violation-chip">
+              ⚠ {getContrastViolations(theme).length} contrast {getContrastViolations(theme).length === 1 ? 'issue' : 'issues'}
+            </span>
+          )}
+          <span className={`sbc__chevron ${open ? 'sbc__chevron--open' : ''}`}>›</span>
+        </div>
       </button>
 
       {open && (
         <div className="sbc__panel">
 
-          {/* ── Presets ─────────────────────────────────── */}
+          {/* ── Violations summary ───────────────────── */}
+          {violations.length > 0 && (
+            <div className="sbc__violations">
+              <div className="sbc__violations-title">⚠ Contrast issues</div>
+              {violations.map(v => (
+                <div key={v.fgKey} className="sbc__violation-row">
+                  <span className="sbc__violation-label">{v.label}</span>
+                  <span className={`sbc__contrast sbc__contrast--${v.grade}`}>{v.ratio}:1</span>
+                  <button
+                    className="sbc__autofix-btn"
+                    onClick={() => set(v.fgKey, autoTextColor(theme[v.bgKey]))}
+                  >
+                    Fix ↺
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Presets ─────────────────────────────── */}
           <div className="sbc__presets">
             {Object.keys(PRESETS).map(name => (
-              <button
-                key={name}
-                className="sbc__preset-btn"
-                onClick={() => applyPreset(name)}
-              >
+              <button key={name} className="sbc__preset-btn" onClick={() => applyPreset(name)}>
                 {name}
               </button>
             ))}
-            <button className="sbc__preset-btn sbc__preset-btn--reset" onClick={resetTheme}>
+            <button className="sbc__preset-btn sbc__preset-btn--reset" onClick={() => applyPreset('US Open')}>
               Reset
             </button>
           </div>
 
-          {/* ── Colors ──────────────────────────────────── */}
-          <Section title="Colors" defaultOpen={true}>
-            <ColorRow label="Background"      value={theme.bg}             onChange={v => set('bg', v)} />
-            <ColorRow label="Active set cell" value={theme.setActiveBg}    onChange={v => set('setActiveBg', v)} />
-            <ColorRow label="Active set text" value={theme.setActiveText}  onChange={v => set('setActiveText', v)} />
-            <ColorRow label="Game score cell" value={theme.gameScoreBg}    onChange={v => set('gameScoreBg', v)} />
-            <ColorRow label="Game score text" value={theme.gameScoreText}  onChange={v => set('gameScoreText', v)} />
-            <ColorRow label="Player name"     value={theme.nameText}       onChange={v => set('nameText', v)} />
-            <ColorRow label="Serving dot"     value={theme.servingColor}   onChange={v => set('servingColor', v)} />
-            <ColorRow label="Set won text"    value={theme.setWinText}     onChange={v => set('setWinText', v)} />
+          {/* ── Colors ──────────────────────────────── */}
+          <Section title="Colors" defaultOpen>
+
+            {/* Scoreboard background */}
+            <ColorRow label="Background" value={theme.bg} onChange={v => set('bg', v)} />
+
+            {/* Active set — bg + text linked */}
+            <div className="sbc__pair-label-row">Accent color (active set &amp; game score)</div>
+            <ColorPair
+              bgLabel="Cell"    bgValue={theme.setActiveBg}
+              textLabel="Text"  textValue={theme.setActiveText}
+              onBgChange={v => setMany({
+                setActiveBg: v, setActiveText: autoTextColor(v),
+                gameScoreBg: v, gameScoreText: autoTextColor(v), // always keep in sync
+              })}
+              onTextChange={v => setMany({ setActiveText: v, gameScoreText: v })}
+            />
+
+            {/* Other colors */}
+            <ColorRow label="Player name"   value={theme.nameText}     onChange={v => set('nameText', v)}     contrastAgainst={theme.bg} />
+            <ColorRow label="Serving dot"   value={theme.servingColor} onChange={v => set('servingColor', v)} contrastAgainst={theme.bg} />
+            <ColorRow label="Set won text"  value={theme.setWinText}   onChange={v => set('setWinText', v)}   contrastAgainst={theme.bg} />
           </Section>
 
-          {/* ── Typography ──────────────────────────────── */}
+          {/* ── Typography ──────────────────────────── */}
           <Section title="Typography">
             <div className="sbc__row">
               <label className="sbc__label">Font</label>
-              <select
-                className="sbc__select"
-                value={theme.fontFamily}
-                onChange={e => set('fontFamily', e.target.value)}
-              >
+              <select className="sbc__select" value={theme.fontFamily}
+                onChange={e => set('fontFamily', e.target.value)}>
                 {FONT_OPTIONS.map(f => (
                   <option key={f.value} value={f.value} style={{ fontFamily: f.value }}>
                     {f.label}
@@ -169,25 +277,49 @@ export default function ScoreboardCustomizer({ theme, onChange }) {
             </div>
           </Section>
 
-          {/* ── Layout ──────────────────────────────────── */}
+          {/* ── Layout ──────────────────────────────── */}
           <Section title="Layout">
-            <SliderRow label="Cell padding"    value={theme.cellPaddingV} min={4}  max={20} unit="px" onChange={v => set('cellPaddingV', v)} />
-            <SliderRow label="Outer radius"    value={theme.outerRadius}  min={0}  max={16} unit="px" onChange={v => set('outerRadius', v)} />
-            <SliderRow label="Cell radius"     value={theme.cellRadius}   min={0}  max={10} unit="px" onChange={v => set('cellRadius', v)} />
+            <div className="sbc__rule-note">
+              Ranges are capped to keep proportions broadcast-quality.
+            </div>
+            <SliderRow label="Cell padding"
+              value={theme.cellPaddingV}
+              min={LAYOUT_RULES.cellPaddingV.min} max={LAYOUT_RULES.cellPaddingV.max}
+              unit="px"
+              onChange={v => set('cellPaddingV', v)} />
+            <SliderRow label="Outer radius"
+              value={theme.outerRadius}
+              min={LAYOUT_RULES.outerRadius.min} max={LAYOUT_RULES.outerRadius.max}
+              unit="px"
+              onChange={v => set('outerRadius', v)} />
+            <SliderRow label="Cell radius"
+              value={theme.cellRadius}
+              min={LAYOUT_RULES.cellRadius.min}
+              max={Math.min(LAYOUT_RULES.cellRadius.max, theme.outerRadius + 2)}
+              unit="px"
+              onChange={v => set('cellRadius', v)} />
+            {theme.cellRadius > theme.outerRadius + 2 && (
+              <div className="sbc__rule-warn">Cell radius capped to outer radius + 2</div>
+            )}
           </Section>
 
-          {/* ── Footer label ────────────────────────────── */}
+          {/* ── Footer label ────────────────────────── */}
           <Section title="Footer label">
-            <ToggleRow label="Show footer"  checked={theme.footerVisible}  onChange={v => set('footerVisible', v)} />
+            <ToggleRow label="Show footer" checked={theme.footerVisible} onChange={v => set('footerVisible', v)} />
             {theme.footerVisible && <>
-              <TextRow   label="Label text"   value={theme.footerText}        placeholder="e.g. FLEX LEAGUE MATCH" onChange={v => set('footerText', v)} maxLength={40} />
-              <ColorRow  label="Background"   value={theme.footerBg}          onChange={v => set('footerBg', v)} />
-              <ColorRow  label="Text color"   value={theme.footerTextColor}   onChange={v => set('footerTextColor', v)} />
-              <ToggleRow label="Pill shape"   checked={theme.footerPill}      onChange={v => set('footerPill', v)} />
+              <TextRow label="Label text" value={theme.footerText}
+                placeholder="e.g. FLEX LEAGUE MATCH" onChange={v => set('footerText', v)} maxLength={40} />
+              <ColorPair
+                bgLabel="Background"  bgValue={theme.footerBg}
+                textLabel="Text"      textValue={theme.footerTextColor}
+                onBgChange={v => setMany({ footerBg: v, footerTextColor: autoTextColor(v) })}
+                onTextChange={v => set('footerTextColor', v)}
+              />
+              <ToggleRow label="Pill shape" checked={theme.footerPill} onChange={v => set('footerPill', v)} />
             </>}
           </Section>
 
-          {/* ── Player info ─────────────────────────────── */}
+          {/* ── Player info ─────────────────────────── */}
           <Section title="Player info">
             <ToggleRow label="Show subtitle" checked={theme.subtitleVisible} onChange={v => set('subtitleVisible', v)} />
             {theme.subtitleVisible && <>
@@ -195,33 +327,25 @@ export default function ScoreboardCustomizer({ theme, onChange }) {
               <TextRow label="P2 subtitle" value={theme.p2Subtitle} placeholder="e.g. UTR 13"  onChange={v => set('p2Subtitle', v)} maxLength={12} />
             </>}
 
-            <div className="sbc__row">
-              <label className="sbc__label">P1 badge</label>
-              <div className="sbc__badge-wrap">
-                {theme.p1Badge
-                  ? <img className="sbc__badge-preview" src={theme.p1Badge} alt="P1 badge" />
-                  : <span className="sbc__badge-empty">None</span>
-                }
-                <button className="sbc__badge-btn" onClick={() => p1BadgeRef.current.click()}>Upload</button>
-                {theme.p1Badge && <button className="sbc__badge-clear" onClick={() => set('p1Badge', null)}>✕</button>}
-                <input ref={p1BadgeRef} type="file" accept="image/*" style={{ display: 'none' }}
-                  onChange={e => handleBadge(1, e.target.files[0])} />
-              </div>
-            </div>
-
-            <div className="sbc__row">
-              <label className="sbc__label">P2 badge</label>
-              <div className="sbc__badge-wrap">
-                {theme.p2Badge
-                  ? <img className="sbc__badge-preview" src={theme.p2Badge} alt="P2 badge" />
-                  : <span className="sbc__badge-empty">None</span>
-                }
-                <button className="sbc__badge-btn" onClick={() => p2BadgeRef.current.click()}>Upload</button>
-                {theme.p2Badge && <button className="sbc__badge-clear" onClick={() => set('p2Badge', null)}>✕</button>}
-                <input ref={p2BadgeRef} type="file" accept="image/*" style={{ display: 'none' }}
-                  onChange={e => handleBadge(2, e.target.files[0])} />
-              </div>
-            </div>
+            {[1, 2].map(p => {
+              const badgeRef = p === 1 ? p1BadgeRef : p2BadgeRef;
+              const badgeKey = p === 1 ? 'p1Badge' : 'p2Badge';
+              const badge    = theme[badgeKey];
+              return (
+                <div key={p} className="sbc__row">
+                  <label className="sbc__label">P{p} badge</label>
+                  <div className="sbc__badge-wrap">
+                    {badge
+                      ? <img className="sbc__badge-preview" src={badge} alt={`P${p} badge`} />
+                      : <span className="sbc__badge-empty">None</span>}
+                    <button className="sbc__badge-btn" onClick={() => badgeRef.current.click()}>Upload</button>
+                    {badge && <button className="sbc__badge-clear" onClick={() => set(badgeKey, null)}>✕</button>}
+                    <input ref={badgeRef} type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => handleBadge(p, e.target.files[0])} />
+                  </div>
+                </div>
+              );
+            })}
           </Section>
 
         </div>

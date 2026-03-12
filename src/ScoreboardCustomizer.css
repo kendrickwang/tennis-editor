@@ -27,6 +27,24 @@
   color: var(--text, #EDF0FF);
   border-color: var(--border-lit, #2E3268);
 }
+.sbc__toggle-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Violation chip on collapsed button ─────────────────── */
+.sbc__violation-chip {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #f97316;
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  border-radius: 99px;
+  padding: 2px 7px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
 
 /* ── Expand chevron ─────────────────────────────────────── */
 .sbc__chevron {
@@ -291,4 +309,141 @@
 }
 .sbc__badge-clear:hover {
   color: var(--error, #F87171);
+}
+
+/* ── Contrast badge ─────────────────────────────────────── */
+.sbc__contrast {
+  font-size: 0.6rem;
+  font-weight: 800;
+  font-family: monospace;
+  padding: 1px 5px;
+  border-radius: 99px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sbc__contrast--good {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.sbc__contrast--ok {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+.sbc__contrast--poor {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+/* ── Auto-fix button ────────────────────────────────────── */
+.sbc__autofix-btn {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--accent, #6366F1);
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.sbc__autofix-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--accent, #6366F1);
+}
+
+/* ── Violations summary block ───────────────────────────── */
+.sbc__violations {
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border, #1C1F3C);
+  background: rgba(249, 115, 22, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sbc__violations-title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #f97316;
+}
+.sbc__violation-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sbc__violation-label {
+  font-size: 0.68rem;
+  color: var(--text-2, #7B82A8);
+  flex: 1;
+}
+
+/* ── Paired color group (bg + text side by side) ────────── */
+.sbc__color-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--surface-2, #131627);
+  border: 1px solid var(--border, #1C1F3C);
+  border-radius: 6px;
+}
+.sbc__color-pair-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sbc__color-pair-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  align-items: center;
+}
+.sbc__pair-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3, #3A4068);
+}
+.sbc__pair-label-row {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3, #3A4068);
+  padding-top: 4px;
+}
+
+/* Live preview swatch inside the pair */
+.sbc__pair-preview {
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: 0.04em;
+  transition: background 0.1s, color 0.1s;
+}
+
+/* ── Layout rule notes ──────────────────────────────────── */
+.sbc__rule-note {
+  font-size: 0.62rem;
+  color: var(--text-3, #3A4068);
+  line-height: 1.4;
+  padding-bottom: 2px;
+}
+.sbc__rule-warn {
+  font-size: 0.62rem;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 4px;
+  padding: 3px 8px;
 }
