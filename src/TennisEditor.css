@@ -1117,14 +1117,9 @@ kbd {
   margin: 16px 0 0;
 }
 
-/* Make the ScorePreview inside the modal fill the panel width */
+/* ScorePreview inside the modal — add side padding around the col */
 .te__customize-modal-preview .sbc__score-preview-col {
-  width: 100%;
-  padding: 0 20px 20px;
-}
-
-.te__customize-modal-preview .sbc__score-preview-wrap {
-  overflow: hidden;
+  padding: 0 20px 24px;
 }
 
 /* Right: scrollable controls */
