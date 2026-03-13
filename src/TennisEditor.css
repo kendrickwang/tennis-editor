@@ -406,6 +406,21 @@
   height: 12px;
 }
 
+/* ── Volume control ───────────────────────────────────────── */
+.te__vol {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.te__vol-slider {
+  width: 56px;
+  height: 3px;
+  accent-color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  border-radius: 2px;
+}
+
 /* ── Status bar ───────────────────────────────────────────── */
 .te__status {
   font-size: 0.85rem;
