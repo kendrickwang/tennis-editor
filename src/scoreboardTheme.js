@@ -35,7 +35,7 @@ export const DEFAULT_THEME = {
   footerText:          '',
   footerBg:            'rgba(0,0,0,0.75)',
   footerTextColor:     '#ffffff',
-  footerPill:          true,
+  footerRadius:        99,    // px corner radius for footer label (99 = pill)
   footerGap:           8,     // px transparent gap between main scoreboard and footer
   footerAlign:         'center', // 'left' | 'center' | 'right'
 
@@ -98,7 +98,7 @@ export const PRESETS = {
     footerText:       'CLUB MATCH',
     footerBg:         '#b5d422',
     footerTextColor:  '#1e3a5f',
-    footerPill:       true,
+    footerRadius:     99,
   },
 };
 
@@ -126,6 +126,7 @@ export const LAYOUT_RULES = {
   paddingH:             { min: 0,  max: 20 }, // horizontal padding inside scoreboard background
   gameScoreGap:         { min: 0,  max: 16 }, // transparent gap between sets and game score
   footerGap:            { min: 0,  max: 24 }, // transparent gap between scoreboard and footer
+  footerRadius:         { min: 0,  max: 99 }, // corner radius for footer label (99 = pill)
 };
 
 // Minimum acceptable contrast ratios (WCAG-based)
@@ -204,7 +205,7 @@ export function autoTextColor(bgHex) {
  */
 export function sanitizeTheme(raw) {
   const t = { ...raw };
-  const { cellPaddingV, outerRadius, cellRadius, paddingH, gameScoreGap, footerGap } = LAYOUT_RULES;
+  const { cellPaddingV, outerRadius, cellRadius, paddingH, gameScoreGap, footerGap, footerRadius } = LAYOUT_RULES;
 
   t.cellPaddingV  = clamp(t.cellPaddingV  ?? 13, cellPaddingV.min,  cellPaddingV.max);
   t.outerRadius   = clamp(t.outerRadius   ?? 0,  outerRadius.min,   outerRadius.max);
@@ -214,6 +215,11 @@ export function sanitizeTheme(raw) {
   t.paddingH      = clamp(t.paddingH      ?? 0,  paddingH.min,      paddingH.max);
   t.gameScoreGap  = clamp(t.gameScoreGap  ?? 0,  gameScoreGap.min,  gameScoreGap.max);
   t.footerGap     = clamp(t.footerGap     ?? 8,  footerGap.min,     footerGap.max);
+  // Migrate old footerPill boolean → footerRadius
+  if (t.footerRadius === undefined) {
+    t.footerRadius = t.footerPill === false ? (t.outerRadius || 4) : 99;
+  }
+  t.footerRadius  = clamp(t.footerRadius,        footerRadius.min,  footerRadius.max);
 
   return t;
 }

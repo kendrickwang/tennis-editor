@@ -127,7 +127,7 @@ export default function Scoreboard({
             style={{
               background:   theme.footerBg,
               color:        theme.footerTextColor,
-              borderRadius: theme.footerPill ? '99px' : `${theme.outerRadius || 4}px`,
+              borderRadius: `${theme.footerRadius ?? (theme.footerPill ? 99 : (theme.outerRadius || 4))}px`,
             }}
           >
             {theme.footerText}
