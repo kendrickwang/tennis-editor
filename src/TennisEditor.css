@@ -322,6 +322,65 @@
   display: inline-block;
 }
 
+/* ── Custom video controls ────────────────────────────────── */
+.te__controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.78));
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.te__video-wrap:hover .te__controls,
+.te__video-wrap:focus-within .te__controls {
+  opacity: 1;
+}
+
+.te__ctrl-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 4px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: background 0.15s;
+}
+.te__ctrl-btn:hover { background: rgba(255, 255, 255, 0.15); }
+.te__ctrl-btn--play { font-size: 1.05rem; }
+
+.te__ctrl-time {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.te__ctrl-seek {
+  flex: 1;
+  min-width: 0;
+  height: 3px;
+  accent-color: #FFD700;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.te__ctrl-seek::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+}
+
 /* ── Status bar ───────────────────────────────────────────── */
 .te__status {
   font-size: 0.85rem;

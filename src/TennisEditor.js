@@ -62,6 +62,8 @@ export default function TennisEditor() {
   // null = not transcoding; 0–1 = in progress
   const [transcodeProgress, setTranscodeProgress] = useState(null);
   const [scoreboardTheme, setScoreboardTheme] = useState(DEFAULT_THEME);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -105,13 +107,21 @@ export default function TennisEditor() {
     return { score: displayScore, serving: displayServing };
   }, [points, currentTime, initialServer]);
 
-  // Video time tracking
+  // Video time + play/pause tracking
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const onTime = () => setCurrentTime(video.currentTime);
+    const onTime  = () => setCurrentTime(video.currentTime);
+    const onPlay  = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
     video.addEventListener('timeupdate', onTime);
-    return () => video.removeEventListener('timeupdate', onTime);
+    video.addEventListener('play',       onPlay);
+    video.addEventListener('pause',      onPause);
+    return () => {
+      video.removeEventListener('timeupdate', onTime);
+      video.removeEventListener('play',       onPlay);
+      video.removeEventListener('pause',      onPause);
+    };
   }, [videoSrc]);
 
   // ── File handling ──────────────────────────────────────────
@@ -176,9 +186,10 @@ export default function TennisEditor() {
 
     if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
       e.preventDefault();
-      if (e.repeat) return; // one press = one 3-second skip, no auto-repeat
-      const delta = e.code === 'ArrowLeft' ? -3 : 3;
-      video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + delta));
+      const direction = e.code === 'ArrowLeft' ? -1 : 1;
+      // Shift = fine 0.1s step; default = 3s jump (repeat allowed for both)
+      const delta = e.shiftKey ? 0.1 : 3;
+      video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + direction * delta));
       return;
     }
 
@@ -415,12 +426,11 @@ export default function TennisEditor() {
             >🎾 {p2Name}</button>
           </div>
 
-          {/* Video + scoreboard overlay */}
+          {/* Video + scoreboard overlay + custom controls */}
           <div className="te__video-wrap">
             <video
               ref={videoRef}
               src={videoSrc}
-              controls
               className="te__video"
               onLoadedMetadata={() => setDuration(videoRef.current.duration)}
             />
@@ -432,6 +442,34 @@ export default function TennisEditor() {
                 onServingChange={s => { if (s !== serving) setInitialServer(1 - initialServer); }}
                 theme={scoreboardTheme}
               />
+            </div>
+            {/* Custom controls — replaces native browser controls to avoid focus trap */}
+            <div className="te__controls">
+              <button
+                className="te__ctrl-btn"
+                onClick={() => { videoRef.current.currentTime = 0; }}
+                title="Go to start"
+              >⏮</button>
+              <button
+                className="te__ctrl-btn te__ctrl-btn--play"
+                onClick={() => { const v = videoRef.current; if (v.paused) v.play(); else v.pause(); }}
+                title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+              >{isPlaying ? '⏸' : '▶'}</button>
+              <span className="te__ctrl-time">{fmtTime(currentTime)} / {fmtTime(duration)}</span>
+              <input
+                type="range"
+                className="te__ctrl-seek"
+                min={0}
+                max={duration || 1}
+                step={0.01}
+                value={currentTime}
+                onChange={e => { videoRef.current.currentTime = Number(e.target.value); }}
+              />
+              <button
+                className="te__ctrl-btn"
+                onClick={() => { videoRef.current.muted = !videoRef.current.muted; setIsMuted(m => !m); }}
+                title={isMuted ? 'Unmute' : 'Mute'}
+              >{isMuted ? '🔇' : '🔊'}</button>
             </div>
           </div>
 
@@ -447,6 +485,7 @@ export default function TennisEditor() {
           <div className="te__hints">
             <span><kbd>Space</kbd> Play / Pause</span>
             <span><kbd>←</kbd><kbd>→</kbd> ±3 sec</span>
+            <span><kbd>Shift</kbd><kbd>←</kbd><kbd>→</kbd> ±0.1 sec</span>
             <span><kbd>S</kbd> Mark start</span>
             <span><kbd>E</kbd> P1 wins</span>
             <span><kbd>R</kbd> P2 wins</span>
