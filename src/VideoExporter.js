@@ -68,7 +68,7 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
       // ── 3. Extract each segment ──────────────────────────────
       // Ensure any custom web font is loaded before canvas rendering
       if (showScoreboard && scoreboardTheme?.fontFamily) {
-        try { await document.fonts.load(`700 18px ${scoreboardTheme.fontFamily}`); } catch (_) {}
+        try { await document.fonts.load(`700 16px ${scoreboardTheme.fontFamily}`); } catch (_) {}
       }
       const segNames = [];
       for (let i = 0; i < points.length; i++) {
@@ -134,6 +134,16 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
         'output.mp4',
       ]);
 
+      // ── 5b. Free segment files from WASM heap ─────────────────
+      // All seg*.mp4 files are no longer needed once concat is done.
+      // Deleting them before readFile('output.mp4') keeps peak WASM
+      // memory use low and prevents "memory access out of bounds" on
+      // sessions with many or long clips.
+      await ffmpeg.deleteFile('list.txt');
+      for (const n of segNames) {
+        try { await ffmpeg.deleteFile(n); } catch (_) {}
+      }
+
       // ── 6. Download ──────────────────────────────────────────
       tick(0.97);
       setStepLabel('Preparing download…');
@@ -162,7 +172,14 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
       try { await ffmpeg.unmount('/input'); } catch (_) {}
       setPhase('error');
       phaseRef.current = 'error';
-      setErrorMsg(err?.message || String(err));
+      const raw = err?.message || String(err);
+      // WebAssembly heap overflow — give a friendlier explanation
+      const isOOM = raw.includes('memory access out of bounds') || raw.includes('out of memory');
+      setErrorMsg(
+        isOOM
+          ? 'FFmpeg ran out of memory. Try exporting fewer clips at once, or use a shorter / lower-resolution source video.'
+          : raw
+      );
     }
   }
 
