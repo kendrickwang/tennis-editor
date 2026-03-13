@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Scoreboard from './Scoreboard';
-import ScoreboardCustomizer from './ScoreboardCustomizer';
+import ScoreboardCustomizer, { ScorePreview, PREVIEW_SCORE_S1, PREVIEW_SCORE_TB } from './ScoreboardCustomizer';
 import PointTimeline from './PointTimeline';
 import VideoExporter from './VideoExporter';
 import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel, recomputeScores, computeServer } from './tennisScore';
@@ -63,6 +63,7 @@ export default function TennisEditor() {
   const [scoreboardTheme, setScoreboardTheme] = useState(DEFAULT_THEME);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [showCustomizer, setShowCustomizer] = useState(false);
   const [volume, setVolume] = useState(1);
   const [videoGlow, setVideoGlow] = useState(null); // null | 'info' | 'success' | 'warn'
   const [matchConfig, setMatchConfig] = useState({ noAds: false, matchTiebreak: false });
@@ -404,31 +405,6 @@ export default function TennisEditor() {
         </div>
       ) : (
         <div className="te__workspace">
-
-          {/* ── Left panel: live scoreboard preview + customizer ── */}
-          <aside className="te__left-panel">
-            <div className="te__left-panel-header">✦ Scoreboard</div>
-            <div className="te__left-panel-preview">
-              <div className="te__left-preview-label">Live preview</div>
-              <Scoreboard
-                score={displayState.score}
-                names={[p1Name, p2Name]}
-                serving={displayState.serving}
-                theme={scoreboardTheme}
-              />
-            </div>
-            <div className="te__left-panel-controls">
-              <ScoreboardCustomizer
-                theme={scoreboardTheme}
-                onChange={setScoreboardTheme}
-                embedded
-              />
-            </div>
-          </aside>
-
-          {/* ── Right main column ── */}
-          <div className="te__main-col">
-
           {/* File bar */}
           <div className="te__file-bar">
             <span className="te__file-name">{fileName}</span>
@@ -624,6 +600,11 @@ export default function TennisEditor() {
             <span><kbd>E</kbd> P1 wins</span>
             <span><kbd>R</kbd> P2 wins</span>
           </div>
+
+          {/* Scoreboard customizer trigger */}
+          <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>
+            ✦ Customize scoreboard
+          </button>
 
           {/* Export */}
           <VideoExporter
@@ -857,7 +838,43 @@ export default function TennisEditor() {
             </div>
           )}
 
-          </div>
+          )}
+
+          {/* ── Scoreboard customizer modal ──────── */}
+          {showCustomizer && (
+            <div className="te__customize-overlay" onClick={() => setShowCustomizer(false)}>
+              <div className="te__customize-modal" onClick={e => e.stopPropagation()}>
+                <div className="te__customize-modal-header">
+                  <span className="te__customize-modal-title">✦ Scoreboard Customizer</span>
+                  <button className="te__customize-modal-close" onClick={() => setShowCustomizer(false)}>✕</button>
+                </div>
+                <div className="te__customize-modal-body">
+                  <div className="te__customize-modal-preview">
+                    <div className="te__customize-preview-label">1st set</div>
+                    <ScorePreview
+                      score={PREVIEW_SCORE_S1}
+                      theme={scoreboardTheme}
+                      scale={0.95}
+                    />
+                    <div className="te__customize-preview-divider" />
+                    <div className="te__customize-preview-label">3rd set tiebreak</div>
+                    <ScorePreview
+                      score={PREVIEW_SCORE_TB}
+                      theme={scoreboardTheme}
+                      scale={0.95}
+                    />
+                  </div>
+                  <div className="te__customize-modal-controls">
+                    <ScoreboardCustomizer
+                      theme={scoreboardTheme}
+                      onChange={setScoreboardTheme}
+                      embedded
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

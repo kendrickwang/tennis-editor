@@ -185,63 +185,6 @@
 /* ── Workspace ────────────────────────────────────────────── */
 .te__workspace {
   width: 100%;
-  max-width: 1380px;
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 1.25rem;
-}
-
-/* ── Left panel: scoreboard preview + customizer ─────── */
-.te__left-panel {
-  width: 360px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  position: sticky;
-  top: 1rem;
-  max-height: calc(100vh - 2rem);
-  overflow-y: auto;
-}
-
-.te__left-panel-header {
-  padding: 11px 16px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-2);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.te__left-panel-preview {
-  padding: 14px 10px 16px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg);
-  flex-shrink: 0;
-}
-
-.te__left-preview-label {
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-3);
-  align-self: flex-start;
-}
-
-/* Main editing column */
-.te__main-col {
-  flex: 1;
-  min-width: 0;
   max-width: 980px;
   display: flex;
   flex-direction: column;
@@ -1142,7 +1085,7 @@ kbd {
   min-height: 0;
 }
 
-/* Left: live scoreboard preview */
+/* Left: stacked scoreboard previews */
 .te__customize-modal-preview {
   width: 380px;
   flex-shrink: 0;
@@ -1152,8 +1095,9 @@ kbd {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 28px 20px;
+  gap: 0;
+  padding: 0;
+  overflow-y: auto;
 }
 
 .te__customize-preview-label {
@@ -1162,6 +1106,25 @@ kbd {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-3);
+  align-self: flex-start;
+  padding: 20px 20px 8px;
+}
+
+.te__customize-preview-divider {
+  width: calc(100% - 40px);
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0 0;
+}
+
+/* Make the ScorePreview inside the modal fill the panel width */
+.te__customize-modal-preview .sbc__score-preview-col {
+  width: 100%;
+  padding: 0 20px 20px;
+}
+
+.te__customize-modal-preview .sbc__score-preview-wrap {
+  overflow: hidden;
 }
 
 /* Right: scrollable controls */
