@@ -106,12 +106,12 @@ export default function TennisEditor() {
       displayScore = pt.scoreBefore;
       displayServing = pt.serving;
       if (currentTime >= pt.endTime) {
-        displayScore = addPoint(pt.scoreBefore, pt.winner);
+        displayScore = addPoint(pt.scoreBefore, pt.winner, matchConfig);
         displayServing = computeServer(displayScore, initialServer);
       }
     }
     return { score: displayScore, serving: displayServing };
-  }, [points, currentTime, initialServer]);
+  }, [points, currentTime, initialServer, matchConfig]);
 
   // Video time + play/pause tracking
   useEffect(() => {
@@ -244,7 +244,7 @@ export default function TennisEditor() {
 
     // Find this point's scoreBefore to show the score at that moment in the video
     const inserted = recomputed.find(p => p.id === newPt.id);
-    const scoreAfterThisPoint = addPoint(inserted.scoreBefore, winner);
+    const scoreAfterThisPoint = addPoint(inserted.scoreBefore, winner, matchConfigRef.current);
     const label = scoreLabel(scoreAfterThisPoint);
     setStatus({
       text: `${winner === 1 ? p1NameRef.current : p2NameRef.current} wins · Score: ${label} · Games: ${scoreAfterThisPoint.currentSet[0]}–${scoreAfterThisPoint.currentSet[1]}`,
