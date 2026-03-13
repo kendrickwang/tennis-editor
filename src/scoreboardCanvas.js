@@ -244,12 +244,22 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
   // CSS: font-size: 0.65rem (≈11px), font-weight: 800, uppercase, padding: 5px 16px
   if (FOOTER_H > 0) {
     const fY    = H + FOOTER_GAP;
-    const fW    = Math.min(W * 0.8, W - PAD_H * 2); // max 80% of content width
     const align = T.footerAlign || 'center';
-    const fX    = align === 'flex-start' ? PAD_H
-                : align === 'flex-end'   ? W - PAD_H - fW
-                : (W - fW) / 2; // center
     const pillR = T.footerRadius ?? (T.footerPill ? 99 : (T.outerRadius || 4));
+
+    // Measure text FIRST so we can size the pill to fit — mirrors CSS:
+    //   .sb__footer { display: inline-block; padding: 5px 16px; max-width: 80% }
+    // which shrinks the pill to text-width + 32px (16px per side), capped at 80%.
+    ctx.font = `800 11px ${T.fontFamily}`;
+    const textW = ctx.measureText(T.footerText.toUpperCase()).width;
+    const fW    = Math.min(textW + 32, W * 0.8); // 16px padding × 2 sides, cap at 80%
+
+    // Position — mirrors CSS sb__footer-outer { justify-content: <align> }
+    // The footer-outer spans the full canvas width with no extra offset;
+    // only sb__main (the main box) has PAD_H padding, not the footer container.
+    const fX = align === 'flex-start' ? 0
+             : align === 'flex-end'   ? W - fW
+             : (W - fW) / 2; // center
 
     ctx.fillStyle = T.footerBg;
     ctx.beginPath();
@@ -257,7 +267,7 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
     ctx.fill();
 
     ctx.fillStyle = T.footerTextColor;
-    ctx.font = `800 11px ${T.fontFamily}`;
+    // ctx.font already set above
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(T.footerText.toUpperCase(), fX + fW / 2, fY + FOOTER_H / 2);
