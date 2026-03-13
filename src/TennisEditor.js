@@ -65,10 +65,13 @@ export default function TennisEditor() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [videoGlow, setVideoGlow] = useState(null); // null | 'info' | 'success' | 'warn'
+  const [matchConfig, setMatchConfig] = useState({ noAds: false, matchTiebreak: false });
+  const [matchSettingsOpen, setMatchSettingsOpen] = useState(true);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const glowTimerRef = useRef(null);
+  const matchConfigRef = useRef({ noAds: false, matchTiebreak: false });
 
   // Refs so keyboard handler never has stale closures
   const scoreRef = useRef(INITIAL_SCORE);
@@ -85,6 +88,7 @@ export default function TennisEditor() {
   useEffect(() => { p1NameRef.current = p1Name; }, [p1Name]);
   useEffect(() => { p2NameRef.current = p2Name; }, [p2Name]);
   useEffect(() => { initialServerRef.current = initialServer; }, [initialServer]);
+  useEffect(() => { matchConfigRef.current = matchConfig; }, [matchConfig]);
 
   // Derive current serving from score + initialServer (auto-computed, no extra state)
   const serving = computeServer(score, initialServer);
@@ -230,7 +234,7 @@ export default function TennisEditor() {
 
     const winner = e.code === 'KeyE' ? 1 : 2;
     const newPt = { id: Date.now(), startTime, endTime, winner };
-    const { points: recomputed, finalScore } = recomputeScores([...pointsRef.current, newPt], initialServerRef.current);
+    const { points: recomputed, finalScore } = recomputeScores([...pointsRef.current, newPt], initialServerRef.current, matchConfigRef.current);
 
     setPoints(recomputed);
     setScore(finalScore);
@@ -264,7 +268,7 @@ export default function TennisEditor() {
   }
 
   function removePoint(id) {
-    const { points: recomputed, finalScore } = recomputeScores(points.filter(p => p.id !== id), initialServer);
+    const { points: recomputed, finalScore } = recomputeScores(points.filter(p => p.id !== id), initialServer, matchConfigRef.current);
     setPoints(recomputed);
     setScore(finalScore);
     scoreRef.current = finalScore;
@@ -273,7 +277,7 @@ export default function TennisEditor() {
   function editPointWinner(id, newWinner) {
     const { points: recomputed, finalScore } = recomputeScores(
       points.map(p => p.id === id ? { ...p, winner: newWinner } : p),
-      initialServer
+      initialServer, matchConfigRef.current
     );
     setPoints(recomputed);
     setScore(finalScore);
@@ -285,7 +289,7 @@ export default function TennisEditor() {
     const pt = points.find(p => p.id === id);
     const next = pt.servingManual !== undefined ? undefined : 1 - pt.serving;
     const updated = points.map(p => p.id === id ? { ...p, servingManual: next } : p);
-    const { points: recomputed, finalScore } = recomputeScores(updated, initialServer);
+    const { points: recomputed, finalScore } = recomputeScores(updated, initialServer, matchConfigRef.current);
     setPoints(recomputed);
     setScore(finalScore);
     scoreRef.current = finalScore;
@@ -323,7 +327,7 @@ export default function TennisEditor() {
       matchWinner: null,
     };
     const updated = points.map(p => p.id === editScoreId ? { ...p, scoreOverride: override } : p);
-    const { points: recomputed, finalScore } = recomputeScores(updated, initialServer);
+    const { points: recomputed, finalScore } = recomputeScores(updated, initialServer, matchConfigRef.current);
     setPoints(recomputed);
     setScore(finalScore);
     scoreRef.current = finalScore;
@@ -342,12 +346,22 @@ export default function TennisEditor() {
   // Recompute all points whenever initialServer changes
   useEffect(() => {
     if (points.length === 0) return;
-    const { points: recomputed, finalScore } = recomputeScores(points, initialServer);
+    const { points: recomputed, finalScore } = recomputeScores(points, initialServer, matchConfigRef.current);
     setPoints(recomputed);
     setScore(finalScore);
     scoreRef.current = finalScore;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialServer]);
+
+  // Recompute all points whenever match config changes
+  useEffect(() => {
+    if (points.length === 0) return;
+    const { points: recomputed, finalScore } = recomputeScores(points, initialServer, matchConfig);
+    setPoints(recomputed);
+    setScore(finalScore);
+    scoreRef.current = finalScore;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchConfig]);
 
   // ── Render ─────────────────────────────────────────────────
   return (
@@ -435,6 +449,53 @@ export default function TennisEditor() {
               className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
               onClick={() => setInitialServer(1)}
             >🎾 {p2Name}</button>
+          </div>
+
+          {/* Match settings */}
+          <div className="te__match-settings">
+            <button
+              className="te__match-settings-toggle"
+              onClick={() => setMatchSettingsOpen(o => !o)}
+            >
+              <span className="te__match-settings-label">Match Settings</span>
+              {!matchSettingsOpen && (
+                <span className="te__match-settings-summary">
+                  {matchConfig.matchTiebreak ? 'Match Tiebreak' : 'Full Set'} ·{' '}
+                  {matchConfig.noAds ? 'No-Ads' : 'Ads'}
+                </span>
+              )}
+              <span className="te__match-settings-chevron">{matchSettingsOpen ? '▲' : '▼'}</span>
+            </button>
+            {matchSettingsOpen && (
+              <div className="te__match-settings-body">
+                <div className="te__setting-row">
+                  <span className="te__setting-row-label">3rd Set</span>
+                  <div className="te__setting-pills">
+                    <button
+                      className={`te__setting-pill${!matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                      onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: false }))}
+                    >Full Set</button>
+                    <button
+                      className={`te__setting-pill${matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                      onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: true }))}
+                    >Match Tiebreak</button>
+                  </div>
+                </div>
+                <div className="te__setting-row">
+                  <span className="te__setting-row-label">Scoring</span>
+                  <div className="te__setting-pills">
+                    <button
+                      className={`te__setting-pill${!matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
+                      onClick={() => setMatchConfig(c => ({ ...c, noAds: false }))}
+                    >Ads</button>
+                    <button
+                      className={`te__setting-pill${matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
+                      onClick={() => setMatchConfig(c => ({ ...c, noAds: true }))}
+                    >No-Ads</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Video + scoreboard overlay + custom controls */}
@@ -689,7 +750,7 @@ export default function TennisEditor() {
                               <button className="te__edit-score-clear-override"
                                 onClick={() => {
                                   const updated = points.map(p => p.id === pt.id ? { ...p, scoreOverride: undefined } : p);
-                                  const { points: recomputed, finalScore } = recomputeScores(updated, initialServer);
+                                  const { points: recomputed, finalScore } = recomputeScores(updated, initialServer, matchConfigRef.current);
                                   setPoints(recomputed); setScore(finalScore); scoreRef.current = finalScore;
                                   setEditScoreId(null); setEditScoreDraft(null);
                                 }}>

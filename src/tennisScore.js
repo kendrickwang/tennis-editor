@@ -3,6 +3,7 @@ export const INITIAL_SCORE = {
   currentSet: [0, 0],  // games in current set
   currentGame: [0, 0], // raw point counts (0-4 scale; tiebreak = raw counts)
   isTiebreak: false,
+  matchTiebreakActive: false, // 10-pt match tiebreak replacing 3rd set
   matchWinner: null,   // 1 | 2 | null
 };
 
@@ -34,7 +35,11 @@ export function gameScoreLabel(score) {
   return `${score.currentSet[0]}–${score.currentSet[1]}`;
 }
 
-function scoreGamePoint(p1, p2, winner) {
+function scoreGamePoint(p1, p2, winner, noAds = false) {
+  // No-ads: sudden death at deuce — next point wins immediately
+  if (noAds && p1 >= 3 && p2 >= 3) {
+    return { newPoints: winner === 1 ? [p1 + 1, p2] : [p1, p2 + 1], gameWinner: winner };
+  }
   // Both at 3+ → deuce/advantage territory
   if (p1 >= 3 && p2 >= 3) {
     if (p1 === p2) {
@@ -58,30 +63,41 @@ function setsWon(sets) {
   return [sets.filter(s => s.p1 > s.p2).length, sets.filter(s => s.p2 > s.p1).length];
 }
 
-export function addPoint(score, winner) {
+export function addPoint(score, winner, config = {}) {
   if (score.matchWinner) return score;
-  let { sets, currentSet, currentGame, isTiebreak } = score;
+  let { sets, currentSet, currentGame, isTiebreak, matchTiebreakActive } = score;
   sets = [...sets];
   currentSet = [...currentSet];
   currentGame = [...currentGame];
 
-  // ── Tiebreak ──────────────────────────────────────────────
+  // ── Tiebreak (regular 6-6 or match tiebreak) ──────────────
   if (isTiebreak) {
     currentGame[winner - 1]++;
     const [t1, t2] = currentGame;
-    const tw = (t1 >= 7 && t1 - t2 >= 2) ? 1 : (t2 >= 7 && t2 - t1 >= 2) ? 2 : 0;
+    const winTarget = matchTiebreakActive ? 10 : 7;
+    const tw = (t1 >= winTarget && t1 - t2 >= 2) ? 1 : (t2 >= winTarget && t2 - t1 >= 2) ? 2 : 0;
     if (tw) {
-      const tbLoser = tw === 1 ? t2 : t1; // loser's tiebreak points
-      sets.push(tw === 1 ? { p1: 7, p2: 6, tiebreak: tbLoser } : { p1: 6, p2: 7, tiebreak: tbLoser });
+      const tbWins  = tw === 1 ? t1 : t2;
+      const tbLoses = tw === 1 ? t2 : t1;
+      if (matchTiebreakActive) {
+        // Record actual match tiebreak scores (e.g. 10-7)
+        sets.push(tw === 1 ? { p1: tbWins, p2: tbLoses } : { p1: tbLoses, p2: tbWins });
+      } else {
+        // Regular tiebreak: record as 7-6 with loser's count as superscript
+        sets.push(tw === 1 ? { p1: 7, p2: 6, tiebreak: tbLoses } : { p1: 6, p2: 7, tiebreak: tbLoses });
+      }
       const [p1s, p2s] = setsWon(sets);
       return { sets, currentSet: [0, 0], currentGame: [0, 0], isTiebreak: false,
-        matchWinner: p1s >= 2 ? 1 : p2s >= 2 ? 2 : null };
+        matchTiebreakActive: false, matchWinner: p1s >= 2 ? 1 : p2s >= 2 ? 2 : null };
     }
-    return { sets, currentSet, currentGame, isTiebreak: true, matchWinner: null };
+    return { sets, currentSet, currentGame, isTiebreak: true,
+      matchTiebreakActive: !!matchTiebreakActive, matchWinner: null };
   }
 
   // ── Normal game ───────────────────────────────────────────
-  const { newPoints, gameWinner } = scoreGamePoint(currentGame[0], currentGame[1], winner);
+  const { newPoints, gameWinner } = scoreGamePoint(
+    currentGame[0], currentGame[1], winner, config.noAds
+  );
   currentGame = newPoints;
 
   if (gameWinner) {
@@ -89,21 +105,28 @@ export function addPoint(score, winner) {
     currentGame = [0, 0];
     const [g1, g2] = currentSet;
 
-    // Enter tiebreak
+    // Enter regular tiebreak at 6-6
     if (g1 === 6 && g2 === 6) {
-      return { sets, currentSet, currentGame, isTiebreak: true, matchWinner: null };
+      return { sets, currentSet, currentGame, isTiebreak: true,
+        matchTiebreakActive: false, matchWinner: null };
     }
     // Set won
     const sw = (g1 >= 6 && g1 - g2 >= 2) ? 1 : (g2 >= 6 && g2 - g1 >= 2) ? 2 : 0;
     if (sw) {
       sets.push({ p1: g1, p2: g2 });
       const [p1s, p2s] = setsWon(sets);
-      return { sets, currentSet: [0, 0], currentGame: [0, 0], isTiebreak: false,
-        matchWinner: p1s >= 2 ? 1 : p2s >= 2 ? 2 : null };
+      const matchWinner = p1s >= 2 ? 1 : p2s >= 2 ? 2 : null;
+      // At 1-1 sets with match tiebreak configured → enter 10-pt match tiebreak
+      if (!matchWinner && p1s === 1 && p2s === 1 && config.matchTiebreak) {
+        return { sets, currentSet: [0, 0], currentGame: [0, 0],
+          isTiebreak: true, matchTiebreakActive: true, matchWinner: null };
+      }
+      return { sets, currentSet: [0, 0], currentGame: [0, 0],
+        isTiebreak: false, matchTiebreakActive: false, matchWinner };
     }
   }
 
-  return { sets, currentSet, currentGame, isTiebreak, matchWinner: null };
+  return { sets, currentSet, currentGame, isTiebreak, matchTiebreakActive: false, matchWinner: null };
 }
 
 // Returns 0 (P1) or 1 (P2) — who is serving for a given score state.
@@ -127,7 +150,7 @@ export function computeServer(scoreBefore, initialServer) {
 // Accepts points with or without scoreBefore — always overwrites it.
 // initialServer: 0|1 — who served the first game; used to stamp serving on each point.
 // A point with servingManual set will use that value instead of auto-computed.
-export function recomputeScores(points, initialServer = 0) {
+export function recomputeScores(points, initialServer = 0, config = {}) {
   const sorted = [...points].sort((a, b) => a.startTime - b.startTime);
   let score = INITIAL_SCORE;
   const recomputed = sorted.map(pt => {
@@ -137,7 +160,7 @@ export function recomputeScores(points, initialServer = 0) {
     const serving = pt.servingManual !== undefined
       ? pt.servingManual
       : computeServer(scoreBefore, initialServer);
-    score = addPoint(score, pt.winner);
+    score = addPoint(score, pt.winner, config);
     return { ...pt, scoreBefore, serving };
   });
   return { points: recomputed, finalScore: score };
