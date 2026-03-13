@@ -66,6 +66,10 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
       await ffmpeg.mount('WORKERFS', { blobs: [{ name: 'video.mp4', data: videoFile }] }, '/input');
 
       // ── 3. Extract each segment ──────────────────────────────
+      // Ensure any custom web font is loaded before canvas rendering
+      if (showScoreboard && scoreboardTheme?.fontFamily) {
+        try { await document.fonts.load(`700 18px ${scoreboardTheme.fontFamily}`); } catch (_) {}
+      }
       const segNames = [];
       for (let i = 0; i < points.length; i++) {
         const pt = points[i];
