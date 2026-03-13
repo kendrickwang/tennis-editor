@@ -64,6 +64,7 @@ export default function TennisEditor() {
   const [scoreboardTheme, setScoreboardTheme] = useState(DEFAULT_THEME);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
   const [videoGlow, setVideoGlow] = useState(null); // null | 'info' | 'success' | 'warn'
   const [matchConfig, setMatchConfig] = useState({ noAds: false, matchTiebreak: false });
   const [matchSettingsOpen, setMatchSettingsOpen] = useState(true);
@@ -537,11 +538,49 @@ export default function TennisEditor() {
                 value={currentTime}
                 onChange={e => { videoRef.current.currentTime = Number(e.target.value); }}
               />
-              <button
-                className="te__ctrl-btn"
-                onClick={() => { videoRef.current.muted = !videoRef.current.muted; setIsMuted(m => !m); }}
-                title={isMuted ? 'Unmute' : 'Mute'}
-              >{isMuted ? '🔇' : '🔊'}</button>
+              <div className="te__vol">
+                <button
+                  className="te__ctrl-btn"
+                  onClick={() => {
+                    const next = !isMuted;
+                    videoRef.current.muted = next;
+                    setIsMuted(next);
+                  }}
+                  title={isMuted ? 'Unmute' : 'Mute'}
+                >
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{display:'block'}}>
+                    <path d="M2 5.5h3l4-3v9l-4-3H2V5.5z" fill="currentColor"/>
+                    {(isMuted || volume === 0) ? (
+                      <>
+                        <line x1="11.5" y1="5.5" x2="15" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        <line x1="15" y1="5.5" x2="11.5" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </>
+                    ) : volume < 0.4 ? (
+                      <path d="M12 6.5a2.5 2.5 0 0 1 0 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+                    ) : (
+                      <>
+                        <path d="M12 6a2.5 2.5 0 0 1 0 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+                        <path d="M13.5 4.5a5 5 0 0 1 0 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+                      </>
+                    )}
+                  </svg>
+                </button>
+                <input
+                  type="range"
+                  className="te__vol-slider"
+                  min={0}
+                  max={1}
+                  step={0.02}
+                  value={isMuted ? 0 : volume}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    setVolume(v);
+                    videoRef.current.volume = v;
+                    if (v > 0 && isMuted) { videoRef.current.muted = false; setIsMuted(false); }
+                    if (v === 0 && !isMuted) { videoRef.current.muted = true; setIsMuted(true); }
+                  }}
+                />
+              </div>
             </div>
           </div>
 
