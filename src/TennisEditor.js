@@ -184,8 +184,19 @@ export default function TennisEditor() {
   // ── Keyboard shortcuts ─────────────────────────────────────
   // All mutable values read from refs → no deps needed → stable handler
   const keyHandler = useCallback((e) => {
-    // Don't capture inside form inputs
-    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+    // Don't capture inside form inputs — EXCEPT let Delete/Backspace through
+    // so the shortcut still works even if a name field hasn't been blurred yet.
+    // For Delete/Backspace inside an input: blur the input first, then handle.
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+      if (e.code === 'Delete' || e.code === 'Backspace') {
+        // Only intercept if the input is empty — otherwise user is editing text
+        if (e.target.value !== '') return;
+        e.target.blur();
+        // fall through to delete handler below
+      } else {
+        return;
+      }
+    }
 
     // Cancel pending delete if user presses anything other than Delete/Backspace
     if (pendingDeleteRef.current && e.code !== 'Delete' && e.code !== 'Backspace') {
@@ -238,7 +249,13 @@ export default function TennisEditor() {
         clearTimeout(deleteTimerRef.current);
       } else {
         // First press — request confirmation
-        if (pts.length === 0) return;
+        if (pts.length === 0) {
+          setStatus({ text: 'No points recorded yet — press S then E or R to tag one', kind: 'warn' });
+          clearTimeout(glowTimerRef.current);
+          setVideoGlow('warn');
+          glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1500);
+          return;
+        }
         setPendingDelete(true);
         pendingDeleteRef.current = true;
         setStatus({ text: `Delete point #${pts.length}? Press Delete again to confirm`, kind: 'warn' });
@@ -602,7 +619,10 @@ export default function TennisEditor() {
           </div>
 
           {/* Video + scoreboard overlay + custom controls */}
-          <div className={`te__video-wrap${videoGlow ? ` te__video-wrap--glow-${videoGlow}` : ''}`}>
+          <div
+            className={`te__video-wrap${videoGlow ? ` te__video-wrap--glow-${videoGlow}` : ''}`}
+            onMouseDown={() => { if (document.activeElement?.tagName === 'INPUT') document.activeElement.blur(); }}
+          >
             <video
               ref={videoRef}
               src={videoSrc}
