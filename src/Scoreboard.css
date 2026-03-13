@@ -6,6 +6,7 @@
 /* ── Outer wrapper (transparent, holds main box + footer) ── */
 .sb-wrap {
   font-family: var(--sb-font, system-ui, sans-serif);
+  line-height: normal; /* reset inherited line-height:0 from .te__video-wrap */
   display: inline-flex;
   flex-direction: column;
   align-items: center;
