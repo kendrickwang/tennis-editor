@@ -8,9 +8,9 @@ import './ScoreboardCustomizer.css';
 
 // ── Preview score states ──────────────────────────────────
 
-const PREVIEW_NAMES = ['DJOKOVIC', 'ALCARAZ'];
+export const PREVIEW_NAMES = ['DJOKOVIC', 'ALCARAZ'];
 
-const PREVIEW_SCORE_S1 = {
+export const PREVIEW_SCORE_S1 = {
   sets: [],
   currentSet: [3, 2],
   currentGame: [2, 1], // 30–15
@@ -18,7 +18,7 @@ const PREVIEW_SCORE_S1 = {
   matchWinner: null,
 };
 
-const PREVIEW_SCORE_TB = {
+export const PREVIEW_SCORE_TB = {
   sets: [
     { p1: 6, p2: 4 },
     { p1: 3, p2: 6 },
@@ -242,7 +242,7 @@ function toHex(color) {
 
 // ── Scaled scoreboard preview ─────────────────────────────────
 
-function ScorePreview({ score, theme, label }) {
+export function ScorePreview({ score, theme, label, scale = 0.46 }) {
   // Estimate scoreboard height to size the wrapper correctly
   const rowH    = (theme.cellPaddingV ?? 13) * 2 + 28;
   const mainH   = rowH * 2;
@@ -251,16 +251,14 @@ function ScorePreview({ score, theme, label }) {
     ? (theme.footerGap ?? 8) + 24 : 0;
   const totalH  = mainH + footerH;
 
-  const SCALE = 0.46;
-
   return (
     <div className="sbc__score-preview-col">
       <span className="sbc__score-preview-label">{label}</span>
       <div
         className="sbc__score-preview-wrap"
-        style={{ height: Math.ceil(totalH * SCALE) }}
+        style={{ height: Math.ceil(totalH * scale) }}
       >
-        <div style={{ transform: `scale(${SCALE})`, transformOrigin: 'top left', pointerEvents: 'none' }}>
+        <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', pointerEvents: 'none' }}>
           <Scoreboard theme={theme} score={score} names={PREVIEW_NAMES} serving={0} />
         </div>
       </div>
@@ -335,21 +333,15 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
         </button>
       </div>
 
-      {/* ── Live Preview ─────────────────────────── */}
-      <Section title="Live Preview" defaultOpen>
-        <div className="sbc__preview-row">
-          <ScorePreview
-            label="1st set"
-            score={PREVIEW_SCORE_S1}
-            theme={theme}
-          />
-          <ScorePreview
-            label="3rd set tiebreak"
-            score={PREVIEW_SCORE_TB}
-            theme={theme}
-          />
-        </div>
-      </Section>
+      {/* Live Preview — shown inline only in standalone mode; modal mode renders it in the left panel */}
+      {!embedded && (
+        <Section title="Live Preview" defaultOpen>
+          <div className="sbc__preview-row">
+            <ScorePreview label="1st set"        score={PREVIEW_SCORE_S1} theme={theme} />
+            <ScorePreview label="3rd set tiebreak" score={PREVIEW_SCORE_TB} theme={theme} />
+          </div>
+        </Section>
+      )}
 
       {/* ── Colors ──────────────────────────────── */}
       <Section title="Colors" defaultOpen>
