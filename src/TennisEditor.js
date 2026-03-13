@@ -6,6 +6,7 @@ import VideoExporter from './VideoExporter';
 import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel, recomputeScores, computeServer } from './tennisScore';
 import { canBrowserPlayNatively, transcodeToH264 } from './transcodeVideo';
 import { DEFAULT_THEME } from './scoreboardTheme';
+import { drawScoreboardToCanvas } from './scoreboardCanvas';
 import './TennisEditor.css';
 
 function fmtTime(s) {
@@ -68,11 +69,15 @@ export default function TennisEditor() {
   const [videoGlow, setVideoGlow] = useState(null); // null | 'info' | 'success' | 'warn'
   const [matchConfig, setMatchConfig] = useState({ noAds: false, matchTiebreak: false });
   const [matchSettingsOpen, setMatchSettingsOpen] = useState(true);
+  const [playerSetupOpen, setPlayerSetupOpen] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState(false);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const glowTimerRef = useRef(null);
   const matchConfigRef = useRef({ noAds: false, matchTiebreak: false });
+  const pendingDeleteRef = useRef(false);
+  const deleteTimerRef = useRef(null);
 
   // Refs so keyboard handler never has stale closures
   const scoreRef = useRef(INITIAL_SCORE);
@@ -90,6 +95,7 @@ export default function TennisEditor() {
   useEffect(() => { p2NameRef.current = p2Name; }, [p2Name]);
   useEffect(() => { initialServerRef.current = initialServer; }, [initialServer]);
   useEffect(() => { matchConfigRef.current = matchConfig; }, [matchConfig]);
+  useEffect(() => { pendingDeleteRef.current = pendingDelete; }, [pendingDelete]);
 
   // Derive current serving from score + initialServer (auto-computed, no extra state)
   const serving = computeServer(score, initialServer);
@@ -181,6 +187,14 @@ export default function TennisEditor() {
     // Don't capture inside form inputs
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
 
+    // Cancel pending delete if user presses anything other than Delete/Backspace
+    if (pendingDeleteRef.current && e.code !== 'Delete' && e.code !== 'Backspace') {
+      setPendingDelete(false);
+      pendingDeleteRef.current = false;
+      clearTimeout(deleteTimerRef.current);
+      setVideoGlow(null);
+    }
+
     const video = videoRef.current;
     if (!video) return;
 
@@ -195,6 +209,48 @@ export default function TennisEditor() {
       e.preventDefault();
       const direction = e.code === 'ArrowLeft' ? -1 : 1;
       video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + direction * 3));
+      return;
+    }
+
+    if (e.code === 'Delete' || e.code === 'Backspace') {
+      e.preventDefault();
+      const pts = pointsRef.current;
+      if (pendingDeleteRef.current) {
+        // Second press — confirm delete
+        const lastPt = pts[pts.length - 1];
+        if (lastPt) {
+          const { points: recomputed, finalScore } = recomputeScores(
+            pts.filter(p => p.id !== lastPt.id),
+            initialServerRef.current,
+            matchConfigRef.current
+          );
+          setPoints(recomputed);
+          setScore(finalScore);
+          scoreRef.current = finalScore;
+          video.currentTime = lastPt.startTime;
+          setStatus({ text: `Point #${pts.length} deleted — rewound to ${fmtTime(lastPt.startTime)}`, kind: 'warn' });
+          clearTimeout(glowTimerRef.current);
+          setVideoGlow('warn');
+          glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1500);
+        }
+        setPendingDelete(false);
+        pendingDeleteRef.current = false;
+        clearTimeout(deleteTimerRef.current);
+      } else {
+        // First press — request confirmation
+        if (pts.length === 0) return;
+        setPendingDelete(true);
+        pendingDeleteRef.current = true;
+        setStatus({ text: `Delete point #${pts.length}? Press Delete again to confirm`, kind: 'warn' });
+        clearTimeout(glowTimerRef.current);
+        setVideoGlow('warn');
+        deleteTimerRef.current = setTimeout(() => {
+          setPendingDelete(false);
+          pendingDeleteRef.current = false;
+          setVideoGlow(null);
+          setStatus({ text: '', kind: 'idle' });
+        }, 3000);
+      }
       return;
     }
 
@@ -364,6 +420,34 @@ export default function TennisEditor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchConfig]);
 
+  // ── Capture frame ──────────────────────────────────────────
+  function captureFrame() {
+    const videoEl = videoRef.current;
+    if (!videoEl || !videoEl.videoWidth) return;
+    const canvas = document.createElement('canvas');
+    canvas.width  = videoEl.videoWidth;
+    canvas.height = videoEl.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    const sbCanvas = drawScoreboardToCanvas(
+      displayState.score,
+      [p1Name, p2Name],
+      displayState.serving,
+      scoreboardTheme
+    );
+    const margin = Math.round(canvas.height * 0.025);
+    // sbCanvas renders at 2×; divide by 2 to get CSS-pixel size
+    ctx.drawImage(sbCanvas, margin, margin, sbCanvas.width / 2, sbCanvas.height / 2);
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${fileName || 'thumbnail'}-${fmtTime(currentTime).replace(/:/g, '-')}.jpg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/jpeg', 0.92);
+  }
+
   // ── Render ─────────────────────────────────────────────────
   return (
     <div className="te">
@@ -415,41 +499,59 @@ export default function TennisEditor() {
               onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
           </div>
 
-          {/* Player names + first server */}
-          <div className="te__names">
-            <div className="te__name-field te__name-field--p1">
-              <input
-                id="p1-name"
-                type="text"
-                value={p1Name}
-                onChange={e => setP1Name(e.target.value.slice(0, 20))}
-                maxLength={20}
-                placeholder=" "
-              />
-              <label htmlFor="p1-name">Player/Team 1</label>
-            </div>
-            <div className="te__name-field te__name-field--p2">
-              <input
-                id="p2-name"
-                type="text"
-                value={p2Name}
-                onChange={e => setP2Name(e.target.value.slice(0, 20))}
-                maxLength={20}
-                placeholder=" "
-              />
-              <label htmlFor="p2-name">Player/Team 2</label>
-            </div>
-          </div>
-          <div className="te__serve-picker">
-            <span className="te__serve-picker-label">Serves first</span>
+          {/* Player setup — collapsible, open by default */}
+          <div className="te__match-settings">
             <button
-              className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
-              onClick={() => setInitialServer(0)}
-            >🎾 {p1Name}</button>
-            <button
-              className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
-              onClick={() => setInitialServer(1)}
-            >🎾 {p2Name}</button>
+              className="te__match-settings-toggle"
+              onClick={() => setPlayerSetupOpen(o => !o)}
+            >
+              <span className="te__match-settings-label">Player Setup</span>
+              {!playerSetupOpen && (
+                <span className="te__match-settings-summary">
+                  {p1Name || 'Player 1'} vs {p2Name || 'Player 2'} · {initialServer === 0 ? p1Name || 'Player 1' : p2Name || 'Player 2'} serves
+                </span>
+              )}
+              <span className="te__match-settings-chevron">{playerSetupOpen ? '▲' : '▼'}</span>
+            </button>
+            {playerSetupOpen && (
+              <div className="te__match-settings-body">
+                <div className="te__names">
+                  <div className="te__name-field te__name-field--p1">
+                    <input
+                      id="p1-name"
+                      type="text"
+                      value={p1Name}
+                      onChange={e => setP1Name(e.target.value.slice(0, 20))}
+                      maxLength={20}
+                      placeholder=" "
+                    />
+                    <label htmlFor="p1-name">Player/Team 1</label>
+                  </div>
+                  <div className="te__name-field te__name-field--p2">
+                    <input
+                      id="p2-name"
+                      type="text"
+                      value={p2Name}
+                      onChange={e => setP2Name(e.target.value.slice(0, 20))}
+                      maxLength={20}
+                      placeholder=" "
+                    />
+                    <label htmlFor="p2-name">Player/Team 2</label>
+                  </div>
+                </div>
+                <div className="te__serve-picker">
+                  <span className="te__serve-picker-label">Serves first</span>
+                  <button
+                    className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
+                    onClick={() => setInitialServer(0)}
+                  >🎾 {p1Name}</button>
+                  <button
+                    className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
+                    onClick={() => setInitialServer(1)}
+                  >🎾 {p2Name}</button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Match settings */}
@@ -599,11 +701,21 @@ export default function TennisEditor() {
             <span><kbd>S</kbd> Mark start</span>
             <span><kbd>E</kbd> P1 wins</span>
             <span><kbd>R</kbd> P2 wins</span>
+            <span><kbd>Del</kbd><kbd>Del</kbd> Delete last</span>
           </div>
 
           {/* Scoreboard customizer trigger */}
           <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>
             ✦ Customize scoreboard
+          </button>
+
+          {/* Capture frame */}
+          <button
+            className="te__capture-btn"
+            onClick={captureFrame}
+            title="Download current frame with scoreboard as JPEG"
+          >
+            📷 Capture frame
           </button>
 
           {/* Export */}
