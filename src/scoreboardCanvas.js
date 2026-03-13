@@ -216,7 +216,7 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
     const fX    = align === 'flex-start' ? 0
                 : align === 'flex-end'   ? W - fW
                 : (W - fW) / 2;           // center
-    const pillR = T.footerPill ? FOOTER_PILL / 2 : (T.outerRadius || 3);
+    const pillR = T.footerRadius ?? (T.footerPill ? FOOTER_PILL / 2 : (T.outerRadius || 3));
 
     ctx.fillStyle = T.footerBg;
     ctx.beginPath();

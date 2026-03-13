@@ -440,7 +440,10 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
             onBgChange={v => setMany({ footerBg: v, footerTextColor: autoTextColor(v) })}
             onTextChange={v => set('footerTextColor', v)}
           />
-          <ToggleRow label="Pill shape" checked={theme.footerPill} onChange={v => set('footerPill', v)} />
+          <SliderRow label="Corner radius"
+            value={theme.footerRadius ?? 99}
+            min={0} max={99} unit="px"
+            onChange={v => set('footerRadius', v)} />
           <AlignRow label="Alignment"
             value={theme.footerAlign || 'center'}
             onChange={v => set('footerAlign', v)} />
