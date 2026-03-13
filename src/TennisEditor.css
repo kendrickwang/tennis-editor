@@ -833,6 +833,92 @@ kbd {
   color: var(--text);
 }
 
+/* ── Match Settings collapsible panel ─────────────────────── */
+.te__match-settings {
+  width: 100%;
+  max-width: 760px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.te__match-settings-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  text-align: left;
+}
+.te__match-settings-toggle:hover {
+  background: var(--surface-2);
+}
+.te__match-settings-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+}
+.te__match-settings-summary {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  flex: 1;
+}
+.te__match-settings-chevron {
+  font-size: 0.6rem;
+  color: var(--text-3);
+  margin-left: auto;
+}
+.te__match-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 14px 14px;
+}
+.te__setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.te__setting-row-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  min-width: 70px;
+}
+.te__setting-pills {
+  display: flex;
+  gap: 6px;
+}
+.te__setting-pill {
+  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  color: var(--text-2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.te__setting-pill:hover:not(.te__setting-pill--active) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.te__setting-pill--active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 /* ── 3-dot point menu ─────────────────────────────────────── */
 .te__point-menu-wrap {
   position: relative;
