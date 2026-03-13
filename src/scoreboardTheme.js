@@ -103,12 +103,17 @@ export const PRESETS = {
 };
 
 export const FONT_OPTIONS = [
-  { label: 'System (default)',  value: "system-ui, -apple-system, 'Segoe UI', sans-serif" },
-  { label: 'Impact (broadcast)', value: "Impact, 'Arial Narrow', sans-serif" },
-  { label: 'Georgia (classic)', value: "Georgia, 'Times New Roman', serif" },
-  { label: 'Monospace',         value: "'Courier New', Courier, monospace" },
-  { label: 'Arial Narrow',      value: "'Arial Narrow', Arial, sans-serif" },
-  { label: 'Verdana',           value: "Verdana, Geneva, sans-serif" },
+  { label: 'System (default)',     value: "system-ui, -apple-system, 'Segoe UI', sans-serif" },
+  { label: 'Impact (broadcast)',   value: "Impact, 'Arial Narrow', sans-serif" },
+  { label: 'Bebas Neue',           value: "'Bebas Neue', Impact, sans-serif" },
+  { label: 'Oswald',               value: "'Oswald', 'Arial Narrow', sans-serif" },
+  { label: 'Barlow Condensed',     value: "'Barlow Condensed', 'Arial Narrow', sans-serif" },
+  { label: 'Rajdhani',             value: "'Rajdhani', 'Segoe UI', sans-serif" },
+  { label: 'Roboto Condensed',     value: "'Roboto Condensed', Arial, sans-serif" },
+  { label: 'Georgia (classic)',    value: "Georgia, 'Times New Roman', serif" },
+  { label: 'Arial Narrow',        value: "'Arial Narrow', Arial, sans-serif" },
+  { label: 'Verdana',             value: "Verdana, Geneva, sans-serif" },
+  { label: 'Monospace',           value: "'Courier New', Courier, monospace" },
 ];
 
 // ── Design rules ────────────────────────────────────────────
