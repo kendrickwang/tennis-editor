@@ -243,20 +243,20 @@ function toHex(color) {
 // ── Scaled scoreboard preview ─────────────────────────────────
 
 export function ScorePreview({ score, theme, label, scale = 0.46 }) {
-  // Estimate scoreboard height to size the wrapper correctly
+  // Estimate scoreboard dimensions to size the clip wrapper correctly
   const rowH    = (theme.cellPaddingV ?? 13) * 2 + 28;
   const mainH   = rowH * 2;
-  // Footer adds gap + ~24px pill height when visible
   const footerH = (theme.footerVisible && theme.footerText)
     ? (theme.footerGap ?? 8) + 24 : 0;
   const totalH  = mainH + footerH;
+  const totalW  = 340 + (theme.paddingH ?? 0) * 2; // matches Scoreboard.css base width
 
   return (
     <div className="sbc__score-preview-col">
       <span className="sbc__score-preview-label">{label}</span>
       <div
         className="sbc__score-preview-wrap"
-        style={{ height: Math.ceil(totalH * scale) }}
+        style={{ height: Math.ceil(totalH * scale), width: Math.ceil(totalW * scale) }}
       >
         <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', pointerEvents: 'none' }}>
           <Scoreboard theme={theme} score={score} names={PREVIEW_NAMES} serving={0} />
