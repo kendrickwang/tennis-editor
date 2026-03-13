@@ -39,8 +39,7 @@ export default function Scoreboard({
     '--sb-cell-radius':      `${theme.cellRadius}px`,
     '--sb-font':             theme.fontFamily,
     '--sb-padding-h':        `${theme.paddingH ?? 0}px`,
-    '--sb-pt-border-w':      `${theme.gameScoreBorderWidth ?? 0}px`,
-    '--sb-pt-border-c':      theme.gameScoreBorderColor || theme.setActiveBg,
+    '--sb-game-gap':         `${theme.gameScoreGap ?? 0}px`,
     '--sb-footer-gap':       `${theme.footerGap ?? 8}px`,
   };
 
@@ -101,6 +100,9 @@ export default function Scoreboard({
                       </td>
                     );
                   })}
+                  {(theme.gameScoreGap ?? 0) > 0 && (
+                    <td className="sb__td sb__td--gap" aria-hidden="true" />
+                  )}
                   <td className={`sb__td sb__td--pt ${pt === 'Ad' ? 'sb__td--adv' : ''}`}>
                     {pt}
                   </td>
@@ -116,7 +118,10 @@ export default function Scoreboard({
 
       {/* ── Footer — outside main box, transparent gap above ── */}
       {showFooter && (
-        <div className="sb__footer-outer">
+        <div
+          className="sb__footer-outer"
+          style={{ justifyContent: theme.footerAlign || 'center' }}
+        >
           <div
             className="sb__footer"
             style={{

@@ -485,6 +485,32 @@
   padding: 3px 8px;
 }
 
+/* ── Alignment button group ─────────────────────────────── */
+.sbc__align-btns {
+  display: flex;
+  gap: 4px;
+}
+.sbc__align-btn {
+  padding: 3px 10px;
+  background: var(--surface-2, #131627);
+  border: 1px solid var(--border, #1C1F3C);
+  border-radius: 4px;
+  color: var(--text-2, #7B82A8);
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sbc__align-btn:hover {
+  border-color: var(--accent, #6366F1);
+  color: var(--text, #EDF0FF);
+}
+.sbc__align-btn--active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--accent, #6366F1);
+  color: var(--text, #EDF0FF);
+}
+
 /* ── Live preview row ───────────────────────────────────── */
 .sbc__preview-row {
   display: flex;

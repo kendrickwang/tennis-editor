@@ -23,7 +23,8 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
   const SET_W  = 40;
   const PT_W   = 58;
   const PAD_H  = theme.paddingH ?? 0;
-  const W      = DOT_W + NAME_W + SET_W * MAX_SETS + PT_W + PAD_H * 2; // 340 + horizontal padding
+  const PT_GAP = theme.gameScoreGap ?? 0;
+  const W      = DOT_W + NAME_W + SET_W * MAX_SETS + PT_GAP + PT_W + PAD_H * 2;
   const ROW_H  = (theme.cellPaddingV ?? 13) * 2 + 28;
   const H      = ROW_H * 2;
 
@@ -53,7 +54,7 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
   const xDot  = PAD_H;
   const xName = PAD_H + DOT_W;
   const xSets = Array.from({ length: MAX_SETS }, (_, i) => xName + NAME_W + i * SET_W);
-  const xPt   = xName + NAME_W + SET_W * MAX_SETS;
+  const xPt   = xName + NAME_W + SET_W * MAX_SETS + PT_GAP; // gap pushes PT column right
 
   // ── Main scoreboard background ───────────────────────────
   ctx.fillStyle = T.bg;
@@ -178,27 +179,15 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
       ctx.fillRect(xPt, y, PT_W, ROW_H);
     }
 
-    // PT cell border (configurable outline)
-    const ptBorderW = T.gameScoreBorderWidth ?? 0;
-    if (ptBorderW > 0) {
-      ctx.strokeStyle = T.gameScoreBorderColor || T.setActiveBg;
-      ctx.lineWidth = ptBorderW;
-      if (cr > 0) {
-        ctx.beginPath();
-        ctx.roundRect(xPt + ptBorderW / 2, y + ptBorderW / 2, PT_W - ptBorderW, ROW_H - ptBorderW, cr);
-        ctx.stroke();
-      } else {
-        ctx.strokeRect(xPt + ptBorderW / 2, y + ptBorderW / 2, PT_W - ptBorderW, ROW_H - ptBorderW);
-      }
+    // PT column left divider (only draw when no gap — gap already separates visually)
+    if (PT_GAP === 0) {
+      ctx.strokeStyle = T.dividerColor;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(xPt, y);
+      ctx.lineTo(xPt, y + ROW_H);
+      ctx.stroke();
     }
-
-    // PT column left divider
-    ctx.strokeStyle = T.dividerColor;
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(xPt, y);
-    ctx.lineTo(xPt, y + ROW_H);
-    ctx.stroke();
 
     // Game points text
     ctx.fillStyle = T.gameScoreText;
@@ -221,9 +210,12 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
 
   // ── Footer label — drawn outside main bg with transparent gap ──
   if (FOOTER_PILL > 0) {
-    const fY  = H + FOOTER_GAP;
-    const fW  = Math.min(W * 0.8, 260);
-    const fX  = (W - fW) / 2;
+    const fY    = H + FOOTER_GAP;
+    const fW    = Math.min(W * 0.8, 260);
+    const align = T.footerAlign || 'center';
+    const fX    = align === 'flex-start' ? 0
+                : align === 'flex-end'   ? W - fW
+                : (W - fW) / 2;           // center
     const pillR = T.footerPill ? FOOTER_PILL / 2 : (T.outerRadius || 3);
 
     ctx.fillStyle = T.footerBg;
@@ -235,7 +227,7 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
     ctx.font = `bold 10px ${T.fontFamily}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(T.footerText.toUpperCase(), W / 2, fY + (FOOTER_PILL - 2) / 2);
+    ctx.fillText(T.footerText.toUpperCase(), fX + fW / 2, fY + (FOOTER_PILL - 2) / 2);
   }
 
   return canvas;

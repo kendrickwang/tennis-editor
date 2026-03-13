@@ -189,6 +189,31 @@ function ToggleRow({ label, checked, onChange }) {
   );
 }
 
+function AlignRow({ label, value, onChange }) {
+  const options = [
+    { val: 'flex-start', icon: '⬤ ·  ·', title: 'Left' },
+    { val: 'center',     icon: '·  ⬤ · ', title: 'Center' },
+    { val: 'flex-end',   icon: '·  · ⬤', title: 'Right'  },
+  ];
+  return (
+    <div className="sbc__row">
+      <label className="sbc__label">{label}</label>
+      <div className="sbc__align-btns">
+        {options.map(o => (
+          <button
+            key={o.val}
+            className={`sbc__align-btn${value === o.val ? ' sbc__align-btn--active' : ''}`}
+            title={o.title}
+            onClick={() => onChange(o.val)}
+          >
+            {o.title}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TextRow({ label, value, placeholder, onChange, maxLength }) {
   return (
     <div className="sbc__row">
@@ -390,21 +415,17 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
           onChange={v => set('paddingH', v)} />
       </Section>
 
-      {/* ── Game score border ────────────────────── */}
-      <Section title="Game score border">
-        <SliderRow label="Border width"
-          value={theme.gameScoreBorderWidth ?? 0}
-          min={LAYOUT_RULES.gameScoreBorderWidth.min}
-          max={LAYOUT_RULES.gameScoreBorderWidth.max}
+      {/* ── Game score gap ───────────────────────── */}
+      <Section title="Game score gap">
+        <div className="sbc__rule-note">
+          Adds a transparent gap between the set scores and game score column.
+        </div>
+        <SliderRow label="Gap width"
+          value={theme.gameScoreGap ?? 0}
+          min={LAYOUT_RULES.gameScoreGap.min}
+          max={LAYOUT_RULES.gameScoreGap.max}
           unit="px"
-          onChange={v => set('gameScoreBorderWidth', v)} />
-        {(theme.gameScoreBorderWidth ?? 0) > 0 && (
-          <ColorRow
-            label="Border color"
-            value={theme.gameScoreBorderColor || theme.setActiveBg}
-            onChange={v => set('gameScoreBorderColor', v)}
-          />
-        )}
+          onChange={v => set('gameScoreGap', v)} />
       </Section>
 
       {/* ── Footer label ────────────────────────── */}
@@ -420,6 +441,9 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
             onTextChange={v => set('footerTextColor', v)}
           />
           <ToggleRow label="Pill shape" checked={theme.footerPill} onChange={v => set('footerPill', v)} />
+          <AlignRow label="Alignment"
+            value={theme.footerAlign || 'center'}
+            onChange={v => set('footerAlign', v)} />
           <SliderRow label="Gap above"
             value={theme.footerGap ?? 8}
             min={LAYOUT_RULES.footerGap.min} max={LAYOUT_RULES.footerGap.max}

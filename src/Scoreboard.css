@@ -149,19 +149,22 @@
   font-size: 0.7rem;
 }
 
+/* Transparent gap cell between sets and game score */
+.sb__td--gap {
+  width: var(--sb-game-gap, 0px);
+  padding: 0;
+  background: transparent;
+}
+
 /* Game points — right column */
 .sb__td--pt {
   font-size: 1.25rem;
   font-weight: 900;
   background: var(--sb-game-bg, #FFD700);
   color: var(--sb-game-text, #000000);
-  border-left: 1px solid var(--sb-divider, rgba(255, 255, 255, 0.08));
   width: 58px;
   letter-spacing: -0.01em;
   border-radius: var(--sb-cell-radius, 0);
-  /* Game score border (configurable) */
-  outline: var(--sb-pt-border-w, 0px) solid var(--sb-pt-border-c, transparent);
-  outline-offset: -1px;
 }
 .sb__td--adv {
   color: var(--sb-game-text, #000000);
