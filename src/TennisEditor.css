@@ -345,8 +345,8 @@
 
 /* ── Key-press glow ring on the video wrapper ─────────────── */
 @keyframes glow-pulse-info {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.5),  var(--shadow-lg); }
-  50%       { box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.85), var(--shadow-lg); }
+  0%, 100% { box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5),  var(--shadow-lg); }
+  50%       { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.85), var(--shadow-lg); }
 }
 @keyframes glow-flash-success {
   0%   { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.9), var(--shadow-lg); }
@@ -358,7 +358,7 @@
 }
 
 .te__video-wrap--glow-info {
-  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.65), var(--shadow-lg);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.65), var(--shadow-lg);
   animation: glow-pulse-info 1.2s ease-in-out infinite;
 }
 .te__video-wrap--glow-success {
