@@ -187,9 +187,7 @@ export default function TennisEditor() {
     if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
       e.preventDefault();
       const direction = e.code === 'ArrowLeft' ? -1 : 1;
-      // Shift = fine 0.1s step; default = 3s jump (repeat allowed for both)
-      const delta = e.shiftKey ? 0.1 : 3;
-      video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + direction * delta));
+      video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + direction * 3));
       return;
     }
 
@@ -344,7 +342,7 @@ export default function TennisEditor() {
       {showHelp && (
         <HelpModal names={[p1Name, p2Name]} onAccept={() => setShowHelp(false)} />
       )}
-      <h1 className="te__title">Tennis Match Editor</h1>
+      <h1 className="te__title">Court Clipper</h1>
 
       {!videoSrc ? (
         <div
@@ -485,7 +483,6 @@ export default function TennisEditor() {
           <div className="te__hints">
             <span><kbd>Space</kbd> Play / Pause</span>
             <span><kbd>←</kbd><kbd>→</kbd> ±3 sec</span>
-            <span><kbd>Shift</kbd><kbd>←</kbd><kbd>→</kbd> ±0.1 sec</span>
             <span><kbd>S</kbd> Mark start</span>
             <span><kbd>E</kbd> P1 wins</span>
             <span><kbd>R</kbd> P2 wins</span>
