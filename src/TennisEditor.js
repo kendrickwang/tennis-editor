@@ -64,9 +64,11 @@ export default function TennisEditor() {
   const [scoreboardTheme, setScoreboardTheme] = useState(DEFAULT_THEME);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [videoGlow, setVideoGlow] = useState(null); // null | 'info' | 'success' | 'warn'
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
+  const glowTimerRef = useRef(null);
 
   // Refs so keyboard handler never has stale closures
   const scoreRef = useRef(INITIAL_SCORE);
@@ -199,6 +201,8 @@ export default function TennisEditor() {
       pendingStartRef.current = t;
       setPendingStart(t);
       setStatus({ text: `Start: ${fmtTime(t)} — now press E (P1 wins) or R (P2 wins)`, kind: 'info' });
+      clearTimeout(glowTimerRef.current);
+      setVideoGlow('info'); // persists until E or R clears it
       return;
     }
 
@@ -206,6 +210,9 @@ export default function TennisEditor() {
     const ps = pendingStartRef.current;
     if (ps === null) {
       setStatus({ text: 'Press S first to mark the rally start', kind: 'warn' });
+      clearTimeout(glowTimerRef.current);
+      setVideoGlow('warn');
+      glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1500);
       return;
     }
 
@@ -213,6 +220,9 @@ export default function TennisEditor() {
     let endTime = video.currentTime;
     if (Math.abs(endTime - startTime) < 0.05) {
       setStatus({ text: 'Start and end are too close — seek further from S', kind: 'warn' });
+      clearTimeout(glowTimerRef.current);
+      setVideoGlow('warn');
+      glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1500);
       return;
     }
     // Allow marking if user seeked backwards (swap times)
@@ -236,6 +246,9 @@ export default function TennisEditor() {
       text: `${winner === 1 ? p1NameRef.current : p2NameRef.current} wins · Score: ${label} · Games: ${scoreAfterThisPoint.currentSet[0]}–${scoreAfterThisPoint.currentSet[1]}`,
       kind: 'success',
     });
+    clearTimeout(glowTimerRef.current);
+    setVideoGlow('success');
+    glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1200);
   }, []); // stable — reads from refs only
 
   useEffect(() => {
@@ -425,7 +438,7 @@ export default function TennisEditor() {
           </div>
 
           {/* Video + scoreboard overlay + custom controls */}
-          <div className="te__video-wrap">
+          <div className={`te__video-wrap${videoGlow ? ` te__video-wrap--glow-${videoGlow}` : ''}`}>
             <video
               ref={videoRef}
               src={videoSrc}

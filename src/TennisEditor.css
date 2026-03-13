@@ -343,6 +343,31 @@
   opacity: 1;
 }
 
+/* ── Key-press glow ring on the video wrapper ─────────────── */
+@keyframes glow-pulse-info {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5),  var(--shadow-lg); }
+  50%       { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.85), var(--shadow-lg); }
+}
+@keyframes glow-flash-success {
+  0%   { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.9), var(--shadow-lg); }
+  100% { box-shadow: 0 0 0 0px rgba(16, 185, 129, 0),   var(--shadow-lg); }
+}
+@keyframes glow-flash-warn {
+  0%   { box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.9), var(--shadow-lg); }
+  100% { box-shadow: 0 0 0 0px rgba(249, 115, 22, 0),   var(--shadow-lg); }
+}
+
+.te__video-wrap--glow-info {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.65), var(--shadow-lg);
+  animation: glow-pulse-info 1.2s ease-in-out infinite;
+}
+.te__video-wrap--glow-success {
+  animation: glow-flash-success 1.2s ease-out forwards;
+}
+.te__video-wrap--glow-warn {
+  animation: glow-flash-warn 1.5s ease-out forwards;
+}
+
 .te__ctrl-btn {
   background: none;
   border: none;
