@@ -986,10 +986,7 @@ export default function TennisEditor() {
                       {editScoreId === pt.id && editScoreDraft && (
                         <div className="te__edit-score" onClick={e => e.stopPropagation()}>
                           <div className="te__edit-score-title">Edit score before point #{i + 1}</div>
-                          <div className="te__edit-wrong-score">
-                            Wrong: {editScoreDraft.g1}–{editScoreDraft.g2} games &nbsp;·&nbsp; {editScoreDraft.p1pts}–{editScoreDraft.p2pts} points
-                          </div>
-                          <div className="te__edit-score-row">
+<div className="te__edit-score-row">
                             <label>Past sets</label>
                             <input
                               className="te__edit-score-input"

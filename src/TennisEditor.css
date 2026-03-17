@@ -1231,16 +1231,6 @@ kbd {
   letter-spacing: 0.1em;
   color: var(--text-2);
 }
-.te__edit-wrong-score {
-  font-size: 0.74rem;
-  font-weight: 600;
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.2);
-  border-radius: 5px;
-  padding: 4px 10px;
-  margin-bottom: 2px;
-}
 .te__edit-score-row {
   display: flex;
   align-items: center;
