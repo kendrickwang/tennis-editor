@@ -228,6 +228,12 @@ export default function TennisEditor() {
         if (e.target.value !== '') return;
         e.target.blur();
         // fall through to delete handler below
+      } else if (
+        (e.code === 'ArrowLeft' || e.code === 'ArrowRight') &&
+        e.target.type === 'range'
+      ) {
+        // fall through — the ±3s seek handler below runs;
+        // its e.preventDefault() suppresses the native ±step behavior
       } else {
         return;
       }
@@ -393,17 +399,6 @@ export default function TennisEditor() {
     scoreRef.current = finalScore;
   }
 
-  function overridePointServing(id) {
-    // Toggle servingManual: if already overridden, clear it; otherwise set to opposite of current
-    const pt = points.find(p => p.id === id);
-    const next = pt.servingManual !== undefined ? undefined : 1 - pt.serving;
-    const updated = points.map(p => p.id === id ? { ...p, servingManual: next } : p);
-    const { points: recomputed, finalScore } = recomputeScores(updated, initialServer, matchConfigRef.current);
-    setPoints(recomputed);
-    setScore(finalScore);
-    scoreRef.current = finalScore;
-  }
-
   function openEditScore(pt) {
     const s = pt.scoreBefore;
     setEditScoreDraft({
@@ -440,6 +435,25 @@ export default function TennisEditor() {
     setPoints(recomputed);
     setScore(finalScore);
     scoreRef.current = finalScore;
+
+    // Auto-advance to next point in the same game so the user can keep
+    // correcting consecutive wrong points without reopening the menu.
+    // Stops at any game boundary (game won, set won, match won).
+    const editedPt = recomputed.find(p => p.id === editScoreId);
+    if (editedPt) {
+      const scoreAfter = addPoint(editedPt.scoreBefore, editedPt.winner, matchConfigRef.current);
+      const gameOngoing =
+        scoreAfter.currentSet[0] === editedPt.scoreBefore.currentSet[0] &&
+        scoreAfter.currentSet[1] === editedPt.scoreBefore.currentSet[1] &&
+        scoreAfter.sets.length === editedPt.scoreBefore.sets.length &&
+        !scoreAfter.matchWinner;
+      const idx = recomputed.findIndex(p => p.id === editScoreId);
+      const nextPt = recomputed[idx + 1];
+      if (gameOngoing && nextPt) {
+        openEditScore(nextPt);
+        return;
+      }
+    }
     setEditScoreId(null);
     setEditScoreDraft(null);
   }
@@ -927,7 +941,6 @@ export default function TennisEditor() {
                       bannerText = `${winnerName} wins the game — ${g1}–${g2}`;
                     }
                   }
-                  const isManualServe = pt.servingManual !== undefined;
                   const tiebreakStarted = gameWon && !setCompleted && scoreAfter.isTiebreak;
                   const nextServer = gameWon && !matchWon ? computeServer(scoreAfter, initialServer) : null;
                   const nextServerName = nextServer === 0 ? p1Name : p2Name;
@@ -950,14 +963,8 @@ export default function TennisEditor() {
                             <div className="te__point-menu" onClick={e => e.stopPropagation()}>
                               <div className="te__point-menu-info">
                                 <span className={`te__point-menu-dot te__point-menu-dot--p${pt.serving + 1}`}>●</span>
-                                {pt.serving === 0 ? p1Name : p2Name} serving{isManualServe ? ' ✎' : ''}
+                                {pt.serving === 0 ? p1Name : p2Name} serving
                               </div>
-                              <button
-                                className="te__point-menu-item"
-                                onClick={() => { overridePointServing(pt.id); setOpenMenuId(null); }}
-                              >
-                                {isManualServe ? '↺ Clear server override' : '⇄ Switch server'}
-                              </button>
                               <button
                                 className="te__point-menu-item"
                                 onClick={() => { openEditScore(pt); setOpenMenuId(null); }}
@@ -979,6 +986,9 @@ export default function TennisEditor() {
                       {editScoreId === pt.id && editScoreDraft && (
                         <div className="te__edit-score" onClick={e => e.stopPropagation()}>
                           <div className="te__edit-score-title">Edit score before point #{i + 1}</div>
+                          <div className="te__edit-wrong-score">
+                            Wrong: {editScoreDraft.g1}–{editScoreDraft.g2} games &nbsp;·&nbsp; {editScoreDraft.p1pts}–{editScoreDraft.p2pts} points
+                          </div>
                           <div className="te__edit-score-row">
                             <label>Past sets</label>
                             <input
