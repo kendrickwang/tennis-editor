@@ -71,9 +71,12 @@ export default function TennisEditor() {
   const [matchSettingsOpen, setMatchSettingsOpen] = useState(true);
   const [playerSetupOpen, setPlayerSetupOpen] = useState(true);
   const [pendingDelete, setPendingDelete] = useState(false);
+  // null = no prompt; object = saved session to offer restoring
+  const [restorePrompt, setRestorePrompt] = useState(null);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
+  const sessionFileInputRef = useRef(null);
   const glowTimerRef = useRef(null);
   const matchConfigRef = useRef({ noAds: false, matchTiebreak: false });
   const pendingDeleteRef = useRef(false);
@@ -96,6 +99,29 @@ export default function TennisEditor() {
   useEffect(() => { initialServerRef.current = initialServer; }, [initialServer]);
   useEffect(() => { matchConfigRef.current = matchConfig; }, [matchConfig]);
   useEffect(() => { pendingDeleteRef.current = pendingDelete; }, [pendingDelete]);
+
+  // ── Auto-save session to localStorage ──────────────────────
+  // Fires whenever points change (and there's something worth saving).
+  // Silently skips if storage is full or unavailable.
+  useEffect(() => {
+    if (points.length === 0) return;
+    try {
+      localStorage.setItem('tennis-editor-session', JSON.stringify({
+        version: 1,
+        savedAt: new Date().toISOString(),
+        fileName,
+        p1Name,
+        p2Name,
+        initialServer,
+        matchConfig,
+        scoreboardTheme,
+        points,
+      }));
+    } catch (_) {}
+  // scoreboardTheme intentionally omitted — it changes too often (color pickers)
+  // and is non-critical for clip recovery. All other values are cheap strings/arrays.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [points]);
 
   // Derive current serving from score + initialServer (auto-computed, no extra state)
   const serving = computeServer(score, initialServer);
@@ -151,6 +177,15 @@ export default function TennisEditor() {
     setPendingStart(null);
     setFileName(file.name);
     setTranscodeProgress(null);
+    setRestorePrompt(null);
+
+    // Offer to restore a previous auto-saved session for this file
+    try {
+      const saved = JSON.parse(localStorage.getItem('tennis-editor-session'));
+      if (saved?.points?.length > 0 && saved.fileName === file.name) {
+        setRestorePrompt(saved);
+      }
+    } catch (_) {}
 
     // ── Check native support ──────────────────────────────────
     const nativeOk = await canBrowserPlayNatively(file);
@@ -437,6 +472,50 @@ export default function TennisEditor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchConfig]);
 
+  // ── Session save / load ────────────────────────────────────
+  function saveSession() {
+    const session = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      fileName,
+      p1Name,
+      p2Name,
+      initialServer,
+      matchConfig,
+      scoreboardTheme,
+      points,
+    };
+    const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(fileName || 'session').replace(/\.[^/.]+$/, '')}-session.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function applySession(session) {
+    try {
+      const s = typeof session === 'string' ? JSON.parse(session) : session;
+      if (!s?.points?.length) return;
+      const cfg = s.matchConfig || { noAds: false, matchTiebreak: false };
+      const srv = s.initialServer ?? 0;
+      setP1Name(s.p1Name || 'Player 1');
+      setP2Name(s.p2Name || 'Player 2');
+      setInitialServer(srv);
+      setMatchConfig(cfg);
+      if (s.scoreboardTheme) setScoreboardTheme(s.scoreboardTheme);
+      const { points: recomputed, finalScore } = recomputeScores(s.points, srv, cfg);
+      setPoints(recomputed);
+      pointsRef.current = recomputed;
+      setScore(finalScore);
+      scoreRef.current = finalScore;
+      setRestorePrompt(null);
+    } catch (err) {
+      console.error('[session] load failed:', err);
+    }
+  }
+
   // ── Capture frame ──────────────────────────────────────────
   function captureFrame() {
     const videoEl = videoRef.current;
@@ -509,12 +588,51 @@ export default function TennisEditor() {
           {/* File bar */}
           <div className="te__file-bar">
             <span className="te__file-name">{fileName}</span>
+            {points.length > 0 && (
+              <button className="te__session-btn" onClick={saveSession} title="Download edits as a JSON backup">
+                ↓ Save session
+              </button>
+            )}
+            <label className="te__session-btn" title="Restore edits from a saved session file">
+              ↑ Load session
+              <input
+                ref={sessionFileInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="te__file-input"
+                onChange={e => {
+                  const f = e.target.files[0];
+                  if (!f) return;
+                  const reader = new FileReader();
+                  reader.onload = evt => applySession(evt.target.result);
+                  reader.readAsText(f);
+                  e.target.value = '';
+                }}
+              />
+            </label>
             <button className="te__change-btn" onClick={() => fileInputRef.current.click()}>
               Change video
             </button>
             <input ref={fileInputRef} type="file" accept="video/*"
               onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
           </div>
+
+          {/* Restore prompt — shown when a matching auto-saved session is found */}
+          {restorePrompt && (
+            <div className="te__restore-banner">
+              <span className="te__restore-text">
+                Found <strong>{restorePrompt.points.length} saved point{restorePrompt.points.length !== 1 ? 's' : ''}</strong> from your last session with this file.
+              </span>
+              <div className="te__restore-btns">
+                <button className="te__restore-yes" onClick={() => applySession(restorePrompt)}>
+                  Restore
+                </button>
+                <button className="te__restore-no" onClick={() => setRestorePrompt(null)}>
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Player setup — collapsible, open by default */}
           <div className="te__match-settings">
