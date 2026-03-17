@@ -5,7 +5,7 @@
   gap: 8px;
 }
 
-/* ── Scoreboard toggle ──────────────────────────────────── */
+/* ── Scoreboard toggle + resolution option ──────────────── */
 .exp__toggle {
   display: flex;
   align-items: center;
@@ -28,6 +28,27 @@
   color: #3A4068;
   font-style: italic;
 }
+
+.exp__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.exp__option-label {
+  font-size: 0.78rem;
+  color: #3A4068;
+  white-space: nowrap;
+}
+.exp__res-select {
+  background: #0D0F1E;
+  border: 1px solid #1C1F3C;
+  border-radius: 6px;
+  color: #a5b4fc;
+  font-size: 0.78rem;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.exp__res-select:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ── Export button ──────────────────────────────────────── */
 .exp__btn {
