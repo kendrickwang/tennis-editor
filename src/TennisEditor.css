@@ -117,6 +117,20 @@
 
 .te__file-input { display: none; }
 
+.te__sample-btn {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 4px 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s;
+}
+.te__sample-btn:hover:not(:disabled) { color: var(--accent); }
+.te__sample-btn:disabled { opacity: 0.5; cursor: default; }
+
 /* ── Transcoding overlay ──────────────────────────────────── */
 .te__drop--transcoding {
   cursor: default;

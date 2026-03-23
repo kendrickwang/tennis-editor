@@ -73,6 +73,7 @@ export default function TennisEditor() {
   const [pendingDelete, setPendingDelete] = useState(false);
   // null = no prompt; object = saved session to offer restoring
   const [restorePrompt, setRestorePrompt] = useState(null);
+  const [sampleLoading, setSampleLoading] = useState(false);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -213,6 +214,23 @@ export default function TennisEditor() {
       setStatus({ text: `Could not convert video: ${err.message}`, kind: 'error' });
     } finally {
       setTranscodeProgress(null);
+    }
+  }
+
+  // ── Sample video loader ────────────────────────────────────
+  async function loadSampleVideo() {
+    if (sampleLoading) return;
+    setSampleLoading(true);
+    try {
+      const res = await fetch(`${process.env.PUBLIC_URL}/demo/demo.mp4`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const file = new File([blob], 'demo.mp4', { type: 'video/mp4' });
+      await handleFile(file);
+    } catch (err) {
+      console.error('[sample] failed to load demo video:', err);
+    } finally {
+      setSampleLoading(false);
     }
   }
 
@@ -567,6 +585,7 @@ export default function TennisEditor() {
       <h1 className="te__title">Court Clipper</h1>
 
       {!videoSrc ? (
+        <>
         <div
           className={`te__drop${isDragging ? ' te__drop--active' : ''}${transcodeProgress !== null ? ' te__drop--transcoding' : ''}`}
           onClick={() => transcodeProgress === null && fileInputRef.current.click()}
@@ -597,6 +616,16 @@ export default function TennisEditor() {
             </>
           )}
         </div>
+        {transcodeProgress === null && (
+          <button
+            className="te__sample-btn"
+            onClick={loadSampleVideo}
+            disabled={sampleLoading}
+          >
+            {sampleLoading ? 'Loading sample…' : 'or try a sample match video →'}
+          </button>
+        )}
+        </>
       ) : (
         <div className="te__workspace">
           {/* File bar */}
