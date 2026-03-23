@@ -4,6 +4,18 @@ import { toBlobURL } from '@ffmpeg/util';
 import { drawScoreboardToCanvas, canvasToUint8Array } from './scoreboardCanvas';
 import './VideoExporter.css';
 
+// Maximum parallel FFmpeg workers. Each worker needs ~50 MB (32 MB WASM heap +
+// worker overhead), so 3 keeps peak overhead around 150 MB.
+const PARALLEL = 3;
+
+// Returns an FFmpeg vf/filter fragment that scales down to at most `res` lines,
+// maintaining aspect ratio and rounding width to an even number.
+// Returns null for 'source' (no scaling needed).
+function scaleFilter(res) {
+  const h = { '1080': 1080, '720': 720, '480': 480 }[res];
+  return h ? `scale=-2:min(${h}\\,ih)` : null;
+}
+
 export default function VideoExporter({ videoFile, points, fileName, names = ['P1', 'P2'], serving = 0, scoreboardTheme }) {
   const [phase, setPhase] = useState('idle');
   const [progress, setProgress] = useState(0);
@@ -11,6 +23,7 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
   const [secsLeft, setSecsLeft] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [showScoreboard, setShowScoreboard] = useState(false);
+  const [outputRes, setOutputRes] = useState('720');
 
   const startedAt = useRef(null);
   const phaseRef = useRef('idle');
@@ -36,97 +49,123 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
     setErrorMsg('');
     startedAt.current = Date.now();
 
-    const ffmpeg = new FFmpeg();
-
-    ffmpeg.on('progress', ({ progress: p }) => {
-      if (phaseRef.current === 'concat') {
-        tick(0.70 + Math.min(p, 1) * 0.25);
-      } else if (phaseRef.current === 'segment') {
-        // progress events during segment encoding contribute to the segment step
-      }
-    });
-
     try {
-      // ── 1. Load local core ───────────────────────────────────
-      // toBlobURL fetches the file and returns a blob: URL, bypassing
-      // webpack's dynamic import() interception which breaks plain http: URLs.
+      // ── 1. Fetch WASM as blob URLs once — all workers share them ────────
       const base = `${window.location.origin}${process.env.PUBLIC_URL}/ffmpeg`;
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
-      });
+      const coreURL = await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript');
+      const wasmURL = await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm');
 
       setPhase('working');
       phaseRef.current = 'working';
 
-      // ── 2. Mount video via WORKERFS ──────────────────────────
-      setStepLabel('Mounting video…');
-      tick(0.03);
-      await ffmpeg.createDir('/input');
-      await ffmpeg.mount('WORKERFS', { blobs: [{ name: 'video.mp4', data: videoFile }] }, '/input');
-
-      // ── 3. Extract each segment ──────────────────────────────
-      // Ensure any custom web font is loaded before canvas rendering
+      // Pre-load any custom web font before canvas rendering
       if (showScoreboard && scoreboardTheme?.fontFamily) {
-        try { await document.fonts.load(`700 18px ${scoreboardTheme.fontFamily}`); } catch (_) {}
+        try { await document.fonts.load(`700 16px ${scoreboardTheme.fontFamily}`); } catch (_) {}
       }
-      const segNames = [];
-      for (let i = 0; i < points.length; i++) {
-        const pt = points[i];
-        const name = `seg${i}.mp4`;
-        tick(0.05 + (i / points.length) * 0.60);
-        setStepLabel(`Extracting clip ${i + 1} of ${points.length}…`);
 
-        if (showScoreboard) {
-          // Render scoreboard for this point's score state and burn it in
-          phaseRef.current = 'segment';
-          const canvas = drawScoreboardToCanvas(pt.scoreBefore, names, pt.serving ?? serving, scoreboardTheme);
-          const pngData = await canvasToUint8Array(canvas);
-          const overlayName = `overlay${i}.png`;
-          await ffmpeg.writeFile(overlayName, pngData);
+      // ── 2. Spin up workers and process clips in parallel ─────────────────
+      // Divide points into contiguous chunks — each worker seeks forward
+      // through its own portion of the video, minimising seek distance.
+      const workers = Math.min(PARALLEL, points.length);
+      const chunkSize = Math.ceil(points.length / workers);
+      const chunks = Array.from({ length: workers }, (_, wi) => {
+        const start = wi * chunkSize;
+        return points
+          .slice(start, start + chunkSize)
+          .map((pt, j) => ({ pt, idx: start + j }));
+      }).filter(c => c.length > 0);
 
-          await ffmpeg.exec([
-            '-ss', pt.startTime.toFixed(3),
-            '-to', pt.endTime.toFixed(3),
-            '-i', '/input/video.mp4',
-            '-i', overlayName,
-            '-filter_complex', '[0:v][1:v]overlay=14:14[vout]',
-            '-map', '[vout]',
-            '-map', '0:a?',
-            '-c:v', 'libx264',
-            '-preset', 'ultrafast',
-            '-crf', '23',
-            '-avoid_negative_ts', 'make_zero',
-            '-reset_timestamps', '1',
-            name,
-          ]);
+      // segDataByIdx[i] will hold the Uint8Array for clip i once encoded
+      const segDataByIdx = new Array(points.length);
+      let completedClips = 0;
 
-          await ffmpeg.deleteFile(overlayName);
-          phaseRef.current = 'working';
-        } else {
-          await ffmpeg.exec([
-            '-ss', pt.startTime.toFixed(3),
-            '-to', pt.endTime.toFixed(3),
-            '-i', '/input/video.mp4',
-            '-c', 'copy',
-            '-avoid_negative_ts', 'make_zero',
-            '-reset_timestamps', '1',
-            name,
-          ]);
+      tick(0.05);
+      setStepLabel(`Extracting clips… 0 / ${points.length}`);
+
+      const sf = showScoreboard ? scaleFilter(outputRes) : null;
+
+      await Promise.all(chunks.map(async (chunk) => {
+        const ff = new FFmpeg();
+        await ff.load({ coreURL, wasmURL });
+        await ff.createDir('/input');
+        // WORKERFS mounts the File object read-only — safe to mount the
+        // same File across multiple workers without copying it into memory.
+        await ff.mount('WORKERFS', { blobs: [{ name: 'video.mp4', data: videoFile }] }, '/input');
+
+        for (const { pt, idx } of chunk) {
+          if (showScoreboard) {
+            // Render scoreboard for this point and burn it in
+            const canvas = drawScoreboardToCanvas(
+              pt.scoreBefore, names, pt.serving ?? serving, scoreboardTheme
+            );
+            const pngData = await canvasToUint8Array(canvas);
+            await ff.writeFile('overlay.png', pngData);
+
+            const fc = sf
+              ? `[0:v][1:v]overlay=14:14[ov];[ov]${sf}[vout]`
+              : `[0:v][1:v]overlay=14:14[vout]`;
+
+            await ff.exec([
+              '-ss', pt.startTime.toFixed(3),
+              '-to', pt.endTime.toFixed(3),
+              '-i', '/input/video.mp4',
+              '-i', 'overlay.png',
+              '-filter_complex', fc,
+              '-map', '[vout]',
+              '-map', '0:a?',
+              '-c:v', 'libx264',
+              '-preset', 'ultrafast',
+              '-crf', '23',
+              '-avoid_negative_ts', 'make_zero',
+              '-reset_timestamps', '1',
+              'seg.mp4',
+            ]);
+
+            await ff.deleteFile('overlay.png');
+          } else {
+            // No scoreboard — stream-copy (no re-encode, very fast)
+            await ff.exec([
+              '-ss', pt.startTime.toFixed(3),
+              '-to', pt.endTime.toFixed(3),
+              '-i', '/input/video.mp4',
+              '-c', 'copy',
+              '-avoid_negative_ts', 'make_zero',
+              '-reset_timestamps', '1',
+              'seg.mp4',
+            ]);
+          }
+
+          segDataByIdx[idx] = await ff.readFile('seg.mp4');
+          await ff.deleteFile('seg.mp4');
+
+          // completedClips++ is safe: JS is single-threaded; async callbacks
+          // from multiple workers interleave on the main thread without races.
+          completedClips++;
+          tick(0.05 + (completedClips / points.length) * 0.60);
+          setStepLabel(`Extracting clips… ${completedClips} / ${points.length}`);
         }
 
-        segNames.push(name);
-      }
+        await ff.unmount('/input');
+      }));
 
-      // ── 4. Build concat manifest ─────────────────────────────
+      // ── 3. Concatenate all segments ──────────────────────────────────────
       tick(0.68);
       setStepLabel('Stitching clips…');
-      const manifest = segNames.map(n => `file '${n}'`).join('\n');
-      await ffmpeg.writeFile('list.txt', manifest);
 
-      // ── 5. Concatenate ───────────────────────────────────────
+      const concatFF = new FFmpeg();
+      concatFF.on('progress', ({ progress: p }) => {
+        tick(0.70 + Math.min(p, 1) * 0.25);
+      });
+      await concatFF.load({ coreURL, wasmURL });
+
+      for (let i = 0; i < segDataByIdx.length; i++) {
+        await concatFF.writeFile(`seg${i}.mp4`, segDataByIdx[i]);
+      }
+      const manifest = segDataByIdx.map((_, i) => `file 'seg${i}.mp4'`).join('\n');
+      await concatFF.writeFile('list.txt', manifest);
+
       phaseRef.current = 'concat';
-      await ffmpeg.exec([
+      await concatFF.exec([
         '-f', 'concat',
         '-safe', '0',
         '-i', 'list.txt',
@@ -134,10 +173,16 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
         'output.mp4',
       ]);
 
-      // ── 6. Download ──────────────────────────────────────────
+      // Free segments from WASM heap before reading output
+      await concatFF.deleteFile('list.txt');
+      for (let i = 0; i < segDataByIdx.length; i++) {
+        try { await concatFF.deleteFile(`seg${i}.mp4`); } catch (_) {}
+      }
+
+      // ── 4. Download ──────────────────────────────────────────────────────
       tick(0.97);
       setStepLabel('Preparing download…');
-      const out = await ffmpeg.readFile('output.mp4');
+      const out = await concatFF.readFile('output.mp4');
       const blob = new Blob([out], { type: 'video/mp4' });
       const url = URL.createObjectURL(blob);
       const base2 = (fileName || 'video').replace(/\.[^/.]+$/, '');
@@ -149,8 +194,6 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      await ffmpeg.unmount('/input');
-
       setProgress(1);
       setPhase('done');
       setStepLabel('');
@@ -159,10 +202,15 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
 
     } catch (err) {
       console.error('[export] failed:', err);
-      try { await ffmpeg.unmount('/input'); } catch (_) {}
       setPhase('error');
       phaseRef.current = 'error';
-      setErrorMsg(err?.message || String(err));
+      const raw = err?.message || String(err);
+      const isOOM = raw.includes('memory access out of bounds') || raw.includes('out of memory');
+      setErrorMsg(
+        isOOM
+          ? 'FFmpeg ran out of memory. Try 720p output, fewer clips, or a shorter source video.'
+          : raw
+      );
     }
   }
 
@@ -178,6 +226,23 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
         <span>Export video with scoreboard</span>
         {showScoreboard && <span className="exp__toggle-note">re-encodes — slower</span>}
       </label>
+
+      {showScoreboard && (
+        <div className="exp__option">
+          <span className="exp__option-label">Output resolution</span>
+          <select
+            className="exp__res-select"
+            value={outputRes}
+            onChange={e => setOutputRes(e.target.value)}
+            disabled={isRunning}
+          >
+            <option value="source">Source (slowest)</option>
+            <option value="1080">1080p</option>
+            <option value="720">720p — recommended</option>
+            <option value="480">480p (fastest)</option>
+          </select>
+        </div>
+      )}
 
       {!isRunning && (
         <button

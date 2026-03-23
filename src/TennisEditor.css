@@ -230,6 +230,64 @@
   background: var(--accent-dim);
 }
 
+.te__session-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.te__session-btn:hover {
+  border-color: var(--text-2);
+  color: var(--text);
+}
+
+/* ── Restore session banner ───────────────────────────────── */
+.te__restore-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.875rem;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+}
+.te__restore-text { color: var(--text-2); }
+.te__restore-text strong { color: var(--text); }
+.te__restore-btns { display: flex; gap: 0.5rem; flex-shrink: 0; }
+.te__restore-yes {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  padding: 0.3rem 0.8rem;
+  border-radius: 5px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.te__restore-yes:hover { background: #4f52d9; }
+.te__restore-no {
+  background: none;
+  border: 1px solid var(--border-lit);
+  color: var(--text-2);
+  padding: 0.3rem 0.8rem;
+  border-radius: 5px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.te__restore-no:hover { border-color: var(--text-2); }
+
 /* ── Player names ─────────────────────────────────────────── */
 .te__names {
   display: flex;
