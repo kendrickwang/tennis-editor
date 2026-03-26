@@ -74,7 +74,7 @@ export default function TennisEditor() {
   // null = no prompt; object = saved session to offer restoring
   const [restorePrompt, setRestorePrompt] = useState(null);
   const [sampleLoading, setSampleLoading] = useState(false);
-  const [showPanel, setShowPanel] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [scoreboardSectionOpen, setScoreboardSectionOpen] = useState(true);
 
   const videoRef = useRef(null);
@@ -580,11 +580,11 @@ export default function TennisEditor() {
 
   // ── Render ─────────────────────────────────────────────────
   return (
-    <div className="te">
+    <div className={`te${videoSrc ? ' te--workspace' : ''}`}>
       {showHelp && (
         <HelpModal names={[p1Name, p2Name]} onAccept={() => setShowHelp(false)} />
       )}
-      <h1 className="te__title">Court Clipper</h1>
+      {!videoSrc && <h1 className="te__title">Court Clipper</h1>}
 
       {!videoSrc ? (
         <>
@@ -630,20 +630,19 @@ export default function TennisEditor() {
         </>
       ) : (
         <div className="te__workspace">
-          {/* File bar */}
-          <div className="te__file-bar">
-            <span className="te__file-name">{fileName}</span>
+          {/* Top bar */}
+          <div className="te__topbar">
+            <span className="te__topbar-logo">Court Clipper</span>
+            <span className="te__topbar-file">🎬 {fileName}</span>
+            <div className="te__topbar-spacer" />
+            <button className="te__topbar-btn" onClick={() => setShowHelp(true)} title="How to use">?</button>
+            <div className="te__topbar-sep" />
             {points.length > 0 && (
-              <button className="te__session-btn" onClick={saveSession} title="Download edits as a JSON backup">
-                ↓ Save session
-              </button>
+              <button className="te__topbar-btn" onClick={saveSession} title="Download edits as a JSON backup">↓ Save</button>
             )}
-            <label className="te__session-btn" title="Restore edits from a saved session file">
-              ↑ Load session
-              <input
-                ref={sessionFileInputRef}
-                type="file"
-                accept=".json,application/json"
+            <label className="te__topbar-btn" title="Restore edits from a saved session file">
+              ↑ Load
+              <input ref={sessionFileInputRef} type="file" accept=".json,application/json"
                 className="te__file-input"
                 onChange={e => {
                   const f = e.target.files[0];
@@ -652,39 +651,29 @@ export default function TennisEditor() {
                   reader.onload = evt => applySession(evt.target.result);
                   reader.readAsText(f);
                   e.target.value = '';
-                }}
-              />
+                }} />
             </label>
-            <button className="te__change-btn" onClick={() => fileInputRef.current.click()}>
-              Change video
-            </button>
-            <button
-              className={`te__panel-toggle-btn${showPanel ? ' te__panel-toggle-btn--active' : ''}`}
-              onClick={() => setShowPanel(p => !p)}
-              title="Toggle settings panel"
-            >
-              ◧ Settings
-            </button>
+            <button className="te__topbar-btn" onClick={() => fileInputRef.current.click()}>Change video</button>
             <input ref={fileInputRef} type="file" accept="video/*"
               onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
           </div>
 
-          {/* Restore prompt — shown when a matching auto-saved session is found */}
+          {/* Restore prompt */}
           {restorePrompt && (
             <div className="te__restore-banner">
               <span className="te__restore-text">
                 Found <strong>{restorePrompt.points.length} saved point{restorePrompt.points.length !== 1 ? 's' : ''}</strong> from your last session with this file.
               </span>
               <div className="te__restore-btns">
-                <button className="te__restore-yes" onClick={() => applySession(restorePrompt)}>
-                  Restore
-                </button>
-                <button className="te__restore-no" onClick={() => setRestorePrompt(null)}>
-                  Dismiss
-                </button>
+                <button className="te__restore-yes" onClick={() => applySession(restorePrompt)}>Restore</button>
+                <button className="te__restore-no" onClick={() => setRestorePrompt(null)}>Dismiss</button>
               </div>
             </div>
           )}
+
+          {/* Two-column body: content + sidebar */}
+          <div className="te__body">
+          <div className="te__content">
 
           {/* Video + scoreboard overlay + custom controls */}
           <div
@@ -790,6 +779,18 @@ export default function TennisEditor() {
             <span><kbd>E</kbd> P1 wins</span>
             <span><kbd>R</kbd> P2 wins</span>
             <span><kbd>Del</kbd><kbd>Del</kbd> Delete last</span>
+          </div>
+
+          {/* Export — primary action */}
+          <div className="te__export-bar">
+            <VideoExporter
+              videoFile={videoFile}
+              points={points}
+              fileName={fileName}
+              names={[p1Name, p2Name]}
+              serving={serving}
+              scoreboardTheme={scoreboardTheme}
+            />
           </div>
 
           {/* Point timeline */}
@@ -1007,96 +1008,79 @@ export default function TennisEditor() {
             </div>
           )}
 
-          {/* ── Figma-style settings panel ──────── */}
-          {showPanel && (
-            <div className="te__panel-backdrop" onClick={() => setShowPanel(false)} />
-          )}
-          <div className={`te__panel${showPanel ? ' te__panel--open' : ''}`}>
-            <div className="te__panel-header">
-              <span className="te__panel-title">Settings</span>
-              <button className="te__panel-close" onClick={() => setShowPanel(false)}>✕</button>
-            </div>
-            <div className="te__panel-body">
+          </div>{/* end te__content */}
+
+          {/* ── Persistent settings sidebar ──────── */}
+          <div className={`te__sidebar${sidebarOpen ? '' : ' te__sidebar--collapsed'}`}>
+            <div className="te__sidebar-body">
 
               {/* Players section */}
-              <div className="te__panel-section">
-                <button className="te__panel-section-hdr" onClick={() => setPlayerSetupOpen(o => !o)}>
-                  <span>Players</span>
-                  <span className="te__panel-chevron">{playerSetupOpen ? '▲' : '▼'}</span>
+              <div className="te__sb-section">
+                <button
+                  className="te__sb-section-hdr"
+                  onClick={() => sidebarOpen ? setPlayerSetupOpen(o => !o) : setSidebarOpen(true)}
+                  title="Players"
+                >
+                  <span className="te__sb-icon">◉</span>
+                  {sidebarOpen && <span className="te__sb-label">Players</span>}
+                  {sidebarOpen && <span className="te__sb-chevron">{playerSetupOpen ? '▲' : '▼'}</span>}
                 </button>
-                {playerSetupOpen && (
-                  <div className="te__panel-section-body">
+                {sidebarOpen && playerSetupOpen && (
+                  <div className="te__sb-section-body">
                     <div className="te__names te__names--panel">
                       <div className="te__name-field te__name-field--p1">
-                        <input
-                          id="p1-name-panel"
-                          type="text"
-                          value={p1Name}
+                        <input id="p1-name-sb" type="text" value={p1Name}
                           onChange={e => setP1Name(e.target.value.slice(0, 20))}
-                          maxLength={20}
-                          placeholder=" "
-                        />
-                        <label htmlFor="p1-name-panel">Player/Team 1</label>
+                          maxLength={20} placeholder=" " />
+                        <label htmlFor="p1-name-sb">Player/Team 1</label>
                       </div>
                       <div className="te__name-field te__name-field--p2">
-                        <input
-                          id="p2-name-panel"
-                          type="text"
-                          value={p2Name}
+                        <input id="p2-name-sb" type="text" value={p2Name}
                           onChange={e => setP2Name(e.target.value.slice(0, 20))}
-                          maxLength={20}
-                          placeholder=" "
-                        />
-                        <label htmlFor="p2-name-panel">Player/Team 2</label>
+                          maxLength={20} placeholder=" " />
+                        <label htmlFor="p2-name-sb">Player/Team 2</label>
                       </div>
                     </div>
                     <div className="te__serve-picker">
                       <span className="te__serve-picker-label">Serves first</span>
-                      <button
-                        className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
-                        onClick={() => setInitialServer(0)}
-                      >🎾 {p1Name}</button>
-                      <button
-                        className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
-                        onClick={() => setInitialServer(1)}
-                      >🎾 {p2Name}</button>
+                      <button className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
+                        onClick={() => setInitialServer(0)}>🎾 {p1Name}</button>
+                      <button className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
+                        onClick={() => setInitialServer(1)}>🎾 {p2Name}</button>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Match Settings section */}
-              <div className="te__panel-section">
-                <button className="te__panel-section-hdr" onClick={() => setMatchSettingsOpen(o => !o)}>
-                  <span>Match Settings</span>
-                  <span className="te__panel-chevron">{matchSettingsOpen ? '▲' : '▼'}</span>
+              <div className="te__sb-section">
+                <button
+                  className="te__sb-section-hdr"
+                  onClick={() => sidebarOpen ? setMatchSettingsOpen(o => !o) : setSidebarOpen(true)}
+                  title="Match Settings"
+                >
+                  <span className="te__sb-icon">⚙</span>
+                  {sidebarOpen && <span className="te__sb-label">Match Settings</span>}
+                  {sidebarOpen && <span className="te__sb-chevron">{matchSettingsOpen ? '▲' : '▼'}</span>}
                 </button>
-                {matchSettingsOpen && (
-                  <div className="te__panel-section-body">
+                {sidebarOpen && matchSettingsOpen && (
+                  <div className="te__sb-section-body">
                     <div className="te__setting-row">
                       <span className="te__setting-row-label">3rd Set</span>
                       <div className="te__setting-pills">
-                        <button
-                          className={`te__setting-pill${!matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
-                          onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: false }))}
-                        >Full Set</button>
-                        <button
-                          className={`te__setting-pill${matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
-                          onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: true }))}
-                        >Match Tiebreak</button>
+                        <button className={`te__setting-pill${!matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: false }))}>Full Set</button>
+                        <button className={`te__setting-pill${matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: true }))}>Match Tiebreak</button>
                       </div>
                     </div>
                     <div className="te__setting-row">
                       <span className="te__setting-row-label">Scoring</span>
                       <div className="te__setting-pills">
-                        <button
-                          className={`te__setting-pill${!matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
-                          onClick={() => setMatchConfig(c => ({ ...c, noAds: false }))}
-                        >Ads</button>
-                        <button
-                          className={`te__setting-pill${matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
-                          onClick={() => setMatchConfig(c => ({ ...c, noAds: true }))}
-                        >No-Ads</button>
+                        <button className={`te__setting-pill${!matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, noAds: false }))}>Ads</button>
+                        <button className={`te__setting-pill${matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, noAds: true }))}>No-Ads</button>
                       </div>
                     </div>
                   </div>
@@ -1104,13 +1088,18 @@ export default function TennisEditor() {
               </div>
 
               {/* Scoreboard section */}
-              <div className="te__panel-section">
-                <button className="te__panel-section-hdr" onClick={() => setScoreboardSectionOpen(o => !o)}>
-                  <span>Scoreboard</span>
-                  <span className="te__panel-chevron">{scoreboardSectionOpen ? '▲' : '▼'}</span>
+              <div className="te__sb-section">
+                <button
+                  className="te__sb-section-hdr"
+                  onClick={() => sidebarOpen ? setScoreboardSectionOpen(o => !o) : setSidebarOpen(true)}
+                  title="Scoreboard"
+                >
+                  <span className="te__sb-icon">▦</span>
+                  {sidebarOpen && <span className="te__sb-label">Scoreboard</span>}
+                  {sidebarOpen && <span className="te__sb-chevron">{scoreboardSectionOpen ? '▲' : '▼'}</span>}
                 </button>
-                {scoreboardSectionOpen && (
-                  <div className="te__panel-section-body">
+                {sidebarOpen && scoreboardSectionOpen && (
+                  <div className="te__sb-section-body">
                     <ScorePreview
                       score={displayState.score}
                       names={[p1Name, p2Name]}
@@ -1124,20 +1113,19 @@ export default function TennisEditor() {
                 )}
               </div>
 
-              {/* Export section */}
-              <div className="te__panel-section te__panel-section--export">
-                <VideoExporter
-                  videoFile={videoFile}
-                  points={points}
-                  fileName={fileName}
-                  names={[p1Name, p2Name]}
-                  serving={serving}
-                  scoreboardTheme={scoreboardTheme}
-                />
-              </div>
-
             </div>
+
+            {/* Collapse toggle — bottom of sidebar like Mailchimp */}
+            <button
+              className="te__sidebar-toggle"
+              onClick={() => setSidebarOpen(o => !o)}
+              title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            >
+              {sidebarOpen ? '◁' : '▷'}
+            </button>
           </div>
+
+          </div>{/* end te__body */}
 
           {/* ── Scoreboard customizer modal ──────── */}
           {showCustomizer && (
