@@ -70,7 +70,6 @@ export default function TennisEditor() {
   const [matchConfig, setMatchConfig] = useState({ noAds: false, matchTiebreak: false });
   const [matchSettingsOpen, setMatchSettingsOpen] = useState(true);
   const [playerSetupOpen, setPlayerSetupOpen] = useState(true);
-  const [scoreboardSectionOpen, setScoreboardSectionOpen] = useState(true);
   const [pendingDelete, setPendingDelete] = useState(false);
   // null = no prompt; object = saved session to offer restoring
   const [restorePrompt, setRestorePrompt] = useState(null);
@@ -579,14 +578,14 @@ export default function TennisEditor() {
 
   // ── Render ─────────────────────────────────────────────────
   return (
-    <div className={`te${videoSrc ? ' te--workspace' : ''}`}>
+    <div className="te">
       {showHelp && (
         <HelpModal names={[p1Name, p2Name]} onAccept={() => setShowHelp(false)} />
       )}
+      <h1 className="te__title">Court Clipper</h1>
 
       {!videoSrc ? (
         <>
-        <h1 className="te__title">Court Clipper</h1>
         <div
           className={`te__drop${isDragging ? ' te__drop--active' : ''}${transcodeProgress !== null ? ' te__drop--transcoding' : ''}`}
           onClick={() => transcodeProgress === null && fileInputRef.current.click()}
@@ -628,15 +627,35 @@ export default function TennisEditor() {
         )}
         </>
       ) : (
-        <>
-          {/* Top bar */}
-          <div className="te__topbar">
-            <span className="te__topbar-logo">Court Clipper</span>
-            <span className="te__topbar-file">🎬 {fileName}</span>
-            <div className="te__topbar-spacer" />
-            <button className="te__topbar-btn" onClick={() => setShowHelp(true)} title="How to use">?</button>
-            <div className="te__topbar-sep" />
-            <button className="te__topbar-btn" onClick={() => fileInputRef.current.click()}>Change video</button>
+        <div className="te__workspace">
+          {/* File bar */}
+          <div className="te__file-bar">
+            <span className="te__file-name">{fileName}</span>
+            {points.length > 0 && (
+              <button className="te__session-btn" onClick={saveSession} title="Download edits as a JSON backup">
+                ↓ Save session
+              </button>
+            )}
+            <label className="te__session-btn" title="Restore edits from a saved session file">
+              ↑ Load session
+              <input
+                ref={sessionFileInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="te__file-input"
+                onChange={e => {
+                  const f = e.target.files[0];
+                  if (!f) return;
+                  const reader = new FileReader();
+                  reader.onload = evt => applySession(evt.target.result);
+                  reader.readAsText(f);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            <button className="te__change-btn" onClick={() => fileInputRef.current.click()}>
+              Change video
+            </button>
             <input ref={fileInputRef} type="file" accept="video/*"
               onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
           </div>
@@ -658,473 +677,454 @@ export default function TennisEditor() {
             </div>
           )}
 
-          {/* Two-column workspace */}
-          <div className="te__cols">
-
-            {/* LEFT: video + timeline + points */}
-            <div className="te__left">
-              <div
-                className={`te__video-wrap${videoGlow ? ` te__video-wrap--glow-${videoGlow}` : ''}`}
-                onMouseDown={() => { if (document.activeElement?.tagName === 'INPUT') document.activeElement.blur(); }}
-              >
-                <video
-                  ref={videoRef}
-                  src={videoSrc}
-                  className="te__video"
-                  onLoadedMetadata={() => setDuration(videoRef.current.duration)}
-                />
-                <div className="te__sb-overlay">
-                  <Scoreboard
-                    score={displayState.score}
-                    names={[p1Name, p2Name]}
-                    serving={displayState.serving}
-                    onServingChange={s => { if (s !== serving) setInitialServer(1 - initialServer); }}
-                    theme={scoreboardTheme}
-                  />
-                </div>
-                {/* Custom controls — replaces native browser controls to avoid focus trap */}
-                <div className="te__controls">
-                  <button
-                    className="te__ctrl-btn"
-                    onClick={() => { videoRef.current.currentTime = 0; }}
-                    title="Go to start"
-                  >⏮</button>
-                  <button
-                    className="te__ctrl-btn te__ctrl-btn--play"
-                    onClick={() => { const v = videoRef.current; if (v.paused) v.play(); else v.pause(); }}
-                    title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
-                  >{isPlaying ? '⏸' : '▶'}</button>
-                  <span className="te__ctrl-time">{fmtTime(currentTime)} / {fmtTime(duration)}</span>
-                  <input
-                    type="range"
-                    className="te__ctrl-seek"
-                    min={0}
-                    max={duration || 1}
-                    step={0.01}
-                    value={currentTime}
-                    onChange={e => { videoRef.current.currentTime = Number(e.target.value); }}
-                  />
-                  <div className="te__vol">
-                    <button
-                      className="te__ctrl-btn"
-                      onClick={() => {
-                        const next = !isMuted;
-                        videoRef.current.muted = next;
-                        setIsMuted(next);
-                      }}
-                      title={isMuted ? 'Unmute' : 'Mute'}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{display:'block'}}>
-                        <path d="M2 5.5h3l4-3v9l-4-3H2V5.5z" fill="currentColor"/>
-                        {(isMuted || volume === 0) ? (
-                          <>
-                            <line x1="11.5" y1="5.5" x2="15" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                            <line x1="15" y1="5.5" x2="11.5" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                          </>
-                        ) : volume < 0.4 ? (
-                          <path d="M12 6.5a2.5 2.5 0 0 1 0 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
-                        ) : (
-                          <>
-                            <path d="M12 6a2.5 2.5 0 0 1 0 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
-                            <path d="M13.5 4.5a5 5 0 0 1 0 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
-                          </>
-                        )}
-                      </svg>
-                    </button>
+          {/* Player setup — collapsible, open by default */}
+          <div className="te__match-settings">
+            <button
+              className="te__match-settings-toggle"
+              onClick={() => setPlayerSetupOpen(o => !o)}
+            >
+              <span className="te__match-settings-label">Player Setup</span>
+              {!playerSetupOpen && (
+                <span className="te__match-settings-summary">
+                  {p1Name || 'Player 1'} vs {p2Name || 'Player 2'} · {initialServer === 0 ? p1Name || 'Player 1' : p2Name || 'Player 2'} serves
+                </span>
+              )}
+              <span className="te__match-settings-chevron">{playerSetupOpen ? '▲' : '▼'}</span>
+            </button>
+            {playerSetupOpen && (
+              <div className="te__match-settings-body">
+                <div className="te__names">
+                  <div className="te__name-field te__name-field--p1">
                     <input
-                      type="range"
-                      className="te__vol-slider"
-                      min={0}
-                      max={1}
-                      step={0.02}
-                      value={isMuted ? 0 : volume}
-                      onChange={e => {
-                        const v = Number(e.target.value);
-                        setVolume(v);
-                        videoRef.current.volume = v;
-                        if (v > 0 && isMuted) { videoRef.current.muted = false; setIsMuted(false); }
-                        if (v === 0 && !isMuted) { videoRef.current.muted = true; setIsMuted(true); }
-                      }}
+                      id="p1-name"
+                      type="text"
+                      value={p1Name}
+                      onChange={e => setP1Name(e.target.value.slice(0, 20))}
+                      maxLength={20}
+                      placeholder=" "
                     />
+                    <label htmlFor="p1-name">Player/Team 1</label>
+                  </div>
+                  <div className="te__name-field te__name-field--p2">
+                    <input
+                      id="p2-name"
+                      type="text"
+                      value={p2Name}
+                      onChange={e => setP2Name(e.target.value.slice(0, 20))}
+                      maxLength={20}
+                      placeholder=" "
+                    />
+                    <label htmlFor="p2-name">Player/Team 2</label>
+                  </div>
+                </div>
+                <div className="te__serve-picker">
+                  <span className="te__serve-picker-label">Serves first</span>
+                  <button
+                    className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
+                    onClick={() => setInitialServer(0)}
+                  >🎾 {p1Name}</button>
+                  <button
+                    className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
+                    onClick={() => setInitialServer(1)}
+                  >🎾 {p2Name}</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Match settings */}
+          <div className="te__match-settings">
+            <button
+              className="te__match-settings-toggle"
+              onClick={() => setMatchSettingsOpen(o => !o)}
+            >
+              <span className="te__match-settings-label">Match Settings</span>
+              {!matchSettingsOpen && (
+                <span className="te__match-settings-summary">
+                  {matchConfig.matchTiebreak ? 'Match Tiebreak' : 'Full Set'} ·{' '}
+                  {matchConfig.noAds ? 'No-Ads' : 'Ads'}
+                </span>
+              )}
+              <span className="te__match-settings-chevron">{matchSettingsOpen ? '▲' : '▼'}</span>
+            </button>
+            {matchSettingsOpen && (
+              <div className="te__match-settings-body">
+                <div className="te__setting-row">
+                  <span className="te__setting-row-label">3rd Set</span>
+                  <div className="te__setting-pills">
+                    <button
+                      className={`te__setting-pill${!matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                      onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: false }))}
+                    >Full Set</button>
+                    <button
+                      className={`te__setting-pill${matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                      onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: true }))}
+                    >Match Tiebreak</button>
+                  </div>
+                </div>
+                <div className="te__setting-row">
+                  <span className="te__setting-row-label">Scoring</span>
+                  <div className="te__setting-pills">
+                    <button
+                      className={`te__setting-pill${!matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
+                      onClick={() => setMatchConfig(c => ({ ...c, noAds: false }))}
+                    >Ads</button>
+                    <button
+                      className={`te__setting-pill${matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
+                      onClick={() => setMatchConfig(c => ({ ...c, noAds: true }))}
+                    >No-Ads</button>
                   </div>
                 </div>
               </div>
+            )}
+          </div>
 
-              {/* Status bar — directly below the video */}
-              <div className={`te__status te__status--${status.kind}`}>
-                {pendingStart !== null && (
-                  <span className="te__status-marker">● Start: {fmtTime(pendingStart)}</span>
-                )}
-                {status.text}
-              </div>
-
-              {/* Keyboard hints */}
-              <div className="te__hints">
-                <span><kbd>Space</kbd> Play / Pause</span>
-                <span><kbd>←</kbd><kbd>→</kbd> ±3 sec</span>
-                <span><kbd>S</kbd> Mark start</span>
-                <span><kbd>E</kbd> P1 wins</span>
-                <span><kbd>R</kbd> P2 wins</span>
-                <span><kbd>Del</kbd><kbd>Del</kbd> Delete last</span>
-              </div>
-
-              <PointTimeline
-                points={points}
-                duration={duration}
-                currentTime={currentTime}
-                pendingStart={pendingStart}
-                onSeek={seekTo}
+          {/* Video + scoreboard overlay + custom controls */}
+          <div
+            className={`te__video-wrap${videoGlow ? ` te__video-wrap--glow-${videoGlow}` : ''}`}
+            onMouseDown={() => { if (document.activeElement?.tagName === 'INPUT') document.activeElement.blur(); }}
+          >
+            <video
+              ref={videoRef}
+              src={videoSrc}
+              className="te__video"
+              onLoadedMetadata={() => setDuration(videoRef.current.duration)}
+            />
+            <div className="te__sb-overlay">
+              <Scoreboard
+                score={displayState.score}
                 names={[p1Name, p2Name]}
+                serving={displayState.serving}
+                onServingChange={s => { if (s !== serving) setInitialServer(1 - initialServer); }}
+                theme={scoreboardTheme}
               />
-
-              {/* Scrollable points area */}
-              <div className="te__points-area">
-                {points.length > 0 && (
-                  <div className="te__points-list">
-                    <div className="te__points-header">
-                      <span>Recorded points</span>
-                      <button className="te__clear-btn" onClick={() => setShowClearConfirm(true)}>Clear all</button>
-                    </div>
-                    {showClearConfirm && (
-                      <div className="te__clear-confirm">
-                        <span>Clear all {points.length} recorded point{points.length !== 1 ? 's' : ''}? This cannot be undone.</span>
-                        <div className="te__clear-confirm-btns">
-                          <button className="te__clear-confirm-cancel" onClick={() => setShowClearConfirm(false)}>Cancel</button>
-                          <button className="te__clear-confirm-ok" onClick={() => {
-                            setPoints([]);
-                            setScore(INITIAL_SCORE);
-                            scoreRef.current = INITIAL_SCORE;
-                            pointsRef.current = [];
-                            setShowClearConfirm(false);
-                          }}>Yes, clear all</button>
-                        </div>
-                      </div>
-                    )}
-                    <div className="te__points-col-headers">
-                      <span className="te__point-num"></span>
-                      <span className="te__point-score">
-                        <span className="te__col-label">Game</span>
-                        <span className="te__col-label">Point</span>
-                      </span>
-                      <span className="te__col-label te__col-label--time">Time</span>
-                    </div>
-                    <div className="te__points-rows">
-                      {points.map((pt, i) => {
-                        const scoreAfter = addPoint(pt.scoreBefore, pt.winner);
-                        const setCompleted = scoreAfter.sets.length > pt.scoreBefore.sets.length;
-                        const gameWon = setCompleted
-                          || scoreAfter.currentSet[0] !== pt.scoreBefore.currentSet[0]
-                          || scoreAfter.currentSet[1] !== pt.scoreBefore.currentSet[1];
-                        const matchWon = !!scoreAfter.matchWinner;
-                        const winnerName = pt.winner === 1 ? p1Name : p2Name;
-                        let bannerText = null;
-                        if (gameWon) {
-                          if (matchWon) {
-                            bannerText = `${winnerName} wins the match`;
-                          } else if (setCompleted) {
-                            const s = scoreAfter.sets[scoreAfter.sets.length - 1];
-                            bannerText = `${winnerName} wins the set — ${s.p1}–${s.p2}`;
-                          } else {
-                            const [g1, g2] = scoreAfter.currentSet;
-                            bannerText = `${winnerName} wins the game — ${g1}–${g2}`;
-                          }
-                        }
-                        const tiebreakStarted = gameWon && !setCompleted && scoreAfter.isTiebreak;
-                        const nextServer = gameWon && !matchWon ? computeServer(scoreAfter, initialServer) : null;
-                        const nextServerName = nextServer === 0 ? p1Name : p2Name;
-                        return (
-                          <React.Fragment key={pt.id}>
-                            <div className={`te__point-row te__point-row--p${pt.winner}`} onClick={() => seekTo(pt.startTime)} style={{ cursor: 'pointer' }}>
-                              <span className="te__point-num">#{i + 1}</span>
-                              <span className="te__point-score">
-                                <span className="te__point-game-score">{gameScoreLabel(pt.scoreBefore)}</span>
-                                <span className="te__point-pt-score">{scoreLabel(pt.scoreBefore)}</span>
-                              </span>
-                              <span className="te__point-time">{fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}</span>
-                              <span className="te__point-menu-wrap">
-                                <button
-                                  className="te__point-menu-btn"
-                                  onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === pt.id ? null : pt.id); }}
-                                  title="More options"
-                                >⋮</button>
-                                {openMenuId === pt.id && (
-                                  <div className="te__point-menu" onClick={e => e.stopPropagation()}>
-                                    <div className="te__point-menu-info">
-                                      <span className={`te__point-menu-dot te__point-menu-dot--p${pt.serving + 1}`}>●</span>
-                                      {pt.serving === 0 ? p1Name : p2Name} serving
-                                    </div>
-                                    <button
-                                      className="te__point-menu-item"
-                                      onClick={() => { openEditScore(pt); setOpenMenuId(null); }}
-                                    >
-                                      ✎ Edit score at this point
-                                    </button>
-                                  </div>
-                                )}
-                              </span>
-                              <button
-                                className={`te__point-winner te__point-winner--btn te__point-winner--p${pt.winner}`}
-                                onClick={e => { e.stopPropagation(); editPointWinner(pt.id, pt.winner === 1 ? 2 : 1); }}
-                                title="Click to swap winner"
-                              >
-                                {pt.winner === 1 ? p1Name : p2Name} ⇄
-                              </button>
-                              <button className="te__point-del" onClick={e => { e.stopPropagation(); removePoint(pt.id); }} title="Remove">×</button>
-                            </div>
-                            {editScoreId === pt.id && editScoreDraft && (
-                              <div className="te__edit-score" onClick={e => e.stopPropagation()}>
-                                <div className="te__edit-score-title">Edit score before point #{i + 1}</div>
-                                <div className="te__edit-score-row">
-                                  <label>Past sets</label>
-                                  <input
-                                    className="te__edit-score-input"
-                                    value={editScoreDraft.setsStr}
-                                    placeholder="e.g. 6-3 7-5"
-                                    onChange={e => setEditScoreDraft(d => ({ ...d, setsStr: e.target.value }))}
-                                  />
-                                </div>
-                                <div className="te__edit-score-row">
-                                  <label>Current set games</label>
-                                  <div className="te__edit-score-pair">
-                                    <input type="number" min="0" max="7" className="te__edit-score-num"
-                                      value={editScoreDraft.g1}
-                                      onChange={e => setEditScoreDraft(d => ({ ...d, g1: e.target.value }))} />
-                                    <span className="te__edit-score-dash">–</span>
-                                    <input type="number" min="0" max="7" className="te__edit-score-num"
-                                      value={editScoreDraft.g2}
-                                      onChange={e => setEditScoreDraft(d => ({ ...d, g2: e.target.value }))} />
-                                  </div>
-                                </div>
-                                <div className="te__edit-score-row">
-                                  <label>Points{editScoreDraft.isTb ? ' (tiebreak)' : ''}</label>
-                                  {editScoreDraft.isTb ? (
-                                    <div className="te__edit-score-pair">
-                                      <input type="number" min="0" className="te__edit-score-num"
-                                        value={editScoreDraft.p1pts}
-                                        onChange={e => setEditScoreDraft(d => ({ ...d, p1pts: e.target.value }))} />
-                                      <span className="te__edit-score-dash">–</span>
-                                      <input type="number" min="0" className="te__edit-score-num"
-                                        value={editScoreDraft.p2pts}
-                                        onChange={e => setEditScoreDraft(d => ({ ...d, p2pts: e.target.value }))} />
-                                    </div>
-                                  ) : (
-                                    <div className="te__edit-score-pair">
-                                      <select className="te__edit-score-sel"
-                                        value={editScoreDraft.p1pts}
-                                        onChange={e => setEditScoreDraft(d => ({ ...d, p1pts: e.target.value }))}>
-                                        {['0','15','30','40','Ad'].map(v => <option key={v}>{v}</option>)}
-                                      </select>
-                                      <span className="te__edit-score-dash">–</span>
-                                      <select className="te__edit-score-sel"
-                                        value={editScoreDraft.p2pts}
-                                        onChange={e => setEditScoreDraft(d => ({ ...d, p2pts: e.target.value }))}>
-                                        {['0','15','30','40','Ad'].map(v => <option key={v}>{v}</option>)}
-                                      </select>
-                                    </div>
-                                  )}
-                                </div>
-                                <label className="te__edit-score-check">
-                                  <input type="checkbox" checked={editScoreDraft.isTb}
-                                    onChange={e => setEditScoreDraft(d => ({ ...d, isTb: e.target.checked }))} />
-                                  Tiebreak
-                                </label>
-                                {pt.scoreOverride && (
-                                  <div className="te__edit-score-override-note">
-                                    <span>⚠ Override active —</span>
-                                    <button className="te__edit-score-clear-override"
-                                      onClick={() => {
-                                        const updated = points.map(p => p.id === pt.id ? { ...p, scoreOverride: undefined } : p);
-                                        const { points: recomputed, finalScore } = recomputeScores(updated, initialServer, matchConfigRef.current);
-                                        setPoints(recomputed); setScore(finalScore); scoreRef.current = finalScore;
-                                        setEditScoreId(null); setEditScoreDraft(null);
-                                      }}>
-                                      clear override
-                                    </button>
-                                  </div>
-                                )}
-                                <div className="te__edit-score-actions">
-                                  <button className="te__edit-score-save" onClick={saveEditScore}>Save</button>
-                                  <button className="te__edit-score-cancel" onClick={() => { setEditScoreId(null); setEditScoreDraft(null); }}>Cancel</button>
-                                </div>
-                              </div>
-                            )}
-                            {bannerText && (
-                              <div className={`te__game-banner te__game-banner--p${pt.winner}${matchWon ? ' te__game-banner--match' : setCompleted ? ' te__game-banner--set' : ''}`}>
-                                <span>{bannerText}</span>
-                                {!matchWon && !tiebreakStarted && (
-                                  <span className="te__banner-serve">
-                                    🎾 {nextServerName} to serve
-                                    <button
-                                      className="te__banner-swap"
-                                      onClick={() => setInitialServer(1 - initialServer)}
-                                      title="Swap who serves next"
-                                    >↺ swap</button>
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {tiebreakStarted && (
-                              <div className="te__tiebreak-banner">
-                                <span>Tiebreak</span>
-                                <span className="te__banner-serve">
-                                  🎾 {nextServerName} to serve first
-                                  <button
-                                    className="te__banner-swap"
-                                    onClick={() => setInitialServer(1 - initialServer)}
-                                    title="Swap who serves first in the tiebreak"
-                                  >↺ swap</button>
-                                </span>
-                              </div>
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
-
-            {/* RIGHT: sidebar */}
-            <div className="te__sidebar">
-
-              {/* Player Setup section */}
-              <div className="te__sb-section">
-                <button className="te__sb-section-hdr" onClick={() => setPlayerSetupOpen(o => !o)}>
-                  <span>Player Setup</span>
-                  <span className="te__sb-chevron">{playerSetupOpen ? '▲' : '▼'}</span>
+            {/* Custom controls — replaces native browser controls to avoid focus trap */}
+            <div className="te__controls">
+              <button
+                className="te__ctrl-btn"
+                onClick={() => { videoRef.current.currentTime = 0; }}
+                title="Go to start"
+              >⏮</button>
+              <button
+                className="te__ctrl-btn te__ctrl-btn--play"
+                onClick={() => { const v = videoRef.current; if (v.paused) v.play(); else v.pause(); }}
+                title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+              >{isPlaying ? '⏸' : '▶'}</button>
+              <span className="te__ctrl-time">{fmtTime(currentTime)} / {fmtTime(duration)}</span>
+              <input
+                type="range"
+                className="te__ctrl-seek"
+                min={0}
+                max={duration || 1}
+                step={0.01}
+                value={currentTime}
+                onChange={e => { videoRef.current.currentTime = Number(e.target.value); }}
+              />
+              <div className="te__vol">
+                <button
+                  className="te__ctrl-btn"
+                  onClick={() => {
+                    const next = !isMuted;
+                    videoRef.current.muted = next;
+                    setIsMuted(next);
+                  }}
+                  title={isMuted ? 'Unmute' : 'Mute'}
+                >
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{display:'block'}}>
+                    <path d="M2 5.5h3l4-3v9l-4-3H2V5.5z" fill="currentColor"/>
+                    {(isMuted || volume === 0) ? (
+                      <>
+                        <line x1="11.5" y1="5.5" x2="15" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        <line x1="15" y1="5.5" x2="11.5" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </>
+                    ) : volume < 0.4 ? (
+                      <path d="M12 6.5a2.5 2.5 0 0 1 0 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+                    ) : (
+                      <>
+                        <path d="M12 6a2.5 2.5 0 0 1 0 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+                        <path d="M13.5 4.5a5 5 0 0 1 0 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+                      </>
+                    )}
+                  </svg>
                 </button>
-                {playerSetupOpen && (
-                  <div className="te__sb-section-body">
-                    <div className="te__names">
-                      <div className="te__name-field te__name-field--p1">
-                        <input
-                          id="p1-name"
-                          type="text"
-                          value={p1Name}
-                          onChange={e => setP1Name(e.target.value.slice(0, 20))}
-                          maxLength={20}
-                          placeholder=" "
-                        />
-                        <label htmlFor="p1-name">Player/Team 1</label>
-                      </div>
-                      <div className="te__name-field te__name-field--p2">
-                        <input
-                          id="p2-name"
-                          type="text"
-                          value={p2Name}
-                          onChange={e => setP2Name(e.target.value.slice(0, 20))}
-                          maxLength={20}
-                          placeholder=" "
-                        />
-                        <label htmlFor="p2-name">Player/Team 2</label>
-                      </div>
-                    </div>
-                    <div className="te__serve-picker">
-                      <span className="te__serve-picker-label">Serves first</span>
-                      <button
-                        className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
-                        onClick={() => setInitialServer(0)}
-                      >🎾 {p1Name}</button>
-                      <button
-                        className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
-                        onClick={() => setInitialServer(1)}
-                      >🎾 {p2Name}</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Match Settings section */}
-              <div className="te__sb-section">
-                <button className="te__sb-section-hdr" onClick={() => setMatchSettingsOpen(o => !o)}>
-                  <span>Match Settings</span>
-                  <span className="te__sb-chevron">{matchSettingsOpen ? '▲' : '▼'}</span>
-                </button>
-                {matchSettingsOpen && (
-                  <div className="te__sb-section-body">
-                    <div className="te__setting-row">
-                      <span className="te__setting-row-label">3rd Set</span>
-                      <div className="te__setting-pills">
-                        <button
-                          className={`te__setting-pill${!matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
-                          onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: false }))}
-                        >Full Set</button>
-                        <button
-                          className={`te__setting-pill${matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
-                          onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: true }))}
-                        >Match Tiebreak</button>
-                      </div>
-                    </div>
-                    <div className="te__setting-row">
-                      <span className="te__setting-row-label">Scoring</span>
-                      <div className="te__setting-pills">
-                        <button
-                          className={`te__setting-pill${!matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
-                          onClick={() => setMatchConfig(c => ({ ...c, noAds: false }))}
-                        >Ads</button>
-                        <button
-                          className={`te__setting-pill${matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
-                          onClick={() => setMatchConfig(c => ({ ...c, noAds: true }))}
-                        >No-Ads</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Scoreboard section */}
-              <div className="te__sb-section">
-                <button className="te__sb-section-hdr" onClick={() => setScoreboardSectionOpen(o => !o)}>
-                  <span>Scoreboard</span>
-                  <span className="te__sb-chevron">{scoreboardSectionOpen ? '▲' : '▼'}</span>
-                </button>
-                {scoreboardSectionOpen && (
-                  <div className="te__sb-section-body">
-                    <ScorePreview score={displayState.score} names={[p1Name, p2Name]} serving={displayState.serving} theme={scoreboardTheme} scale={0.85} />
-                    <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>✦ Customize scoreboard</button>
-                    <button className="te__capture-btn" onClick={captureFrame} title="Download current frame with scoreboard as JPEG">📷 Capture frame</button>
-                  </div>
-                )}
-              </div>
-
-              {/* Push export to bottom */}
-              <div className="te__sb-spacer" />
-
-              {/* Export */}
-              <div className="te__sb-export">
-                <VideoExporter
-                  videoFile={videoFile}
-                  points={points}
-                  fileName={fileName}
-                  names={[p1Name, p2Name]}
-                  serving={serving}
-                  scoreboardTheme={scoreboardTheme}
+                <input
+                  type="range"
+                  className="te__vol-slider"
+                  min={0}
+                  max={1}
+                  step={0.02}
+                  value={isMuted ? 0 : volume}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    setVolume(v);
+                    videoRef.current.volume = v;
+                    if (v > 0 && isMuted) { videoRef.current.muted = false; setIsMuted(false); }
+                    if (v === 0 && !isMuted) { videoRef.current.muted = true; setIsMuted(true); }
+                  }}
                 />
               </div>
-
-              {/* Session save/load */}
-              <div className="te__sb-session">
-                {points.length > 0 && (
-                  <button className="te__session-btn" onClick={saveSession} title="Download edits as a JSON backup">↓ Save session</button>
-                )}
-                <label className="te__session-btn" title="Restore edits from a saved session file">
-                  ↑ Load session
-                  <input ref={sessionFileInputRef} type="file" accept=".json,application/json"
-                    className="te__file-input"
-                    onChange={e => {
-                      const f = e.target.files[0];
-                      if (!f) return;
-                      const reader = new FileReader();
-                      reader.onload = evt => applySession(evt.target.result);
-                      reader.readAsText(f);
-                      e.target.value = '';
-                    }} />
-                </label>
-              </div>
-
             </div>
           </div>
+
+          {/* Status bar — directly below the video */}
+          <div className={`te__status te__status--${status.kind}`}>
+            {pendingStart !== null && (
+              <span className="te__status-marker">● Start: {fmtTime(pendingStart)}</span>
+            )}
+            {status.text}
+          </div>
+
+          {/* Keyboard hints */}
+          <div className="te__hints">
+            <span><kbd>Space</kbd> Play / Pause</span>
+            <span><kbd>←</kbd><kbd>→</kbd> ±3 sec</span>
+            <span><kbd>S</kbd> Mark start</span>
+            <span><kbd>E</kbd> P1 wins</span>
+            <span><kbd>R</kbd> P2 wins</span>
+            <span><kbd>Del</kbd><kbd>Del</kbd> Delete last</span>
+          </div>
+
+          {/* Scoreboard customizer trigger */}
+          <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>
+            ✦ Customize scoreboard
+          </button>
+
+          {/* Capture frame */}
+          <button
+            className="te__capture-btn"
+            onClick={captureFrame}
+            title="Download current frame with scoreboard as JPEG"
+          >
+            📷 Capture frame
+          </button>
+
+          {/* Export */}
+          <VideoExporter
+            videoFile={videoFile}
+            points={points}
+            fileName={fileName}
+            names={[p1Name, p2Name]}
+            serving={serving}
+            scoreboardTheme={scoreboardTheme}
+          />
+
+          {/* Point timeline */}
+          <PointTimeline
+            points={points}
+            duration={duration}
+            currentTime={currentTime}
+            pendingStart={pendingStart}
+            onSeek={seekTo}
+            names={[p1Name, p2Name]}
+          />
+
+          {/* Points list */}
+          {points.length > 0 && (
+            <div className="te__points-list">
+              <div className="te__points-header">
+                <span>Recorded points</span>
+                <button className="te__clear-btn" onClick={() => setShowClearConfirm(true)}>Clear all</button>
+              </div>
+              {showClearConfirm && (
+                <div className="te__clear-confirm">
+                  <span>Clear all {points.length} recorded point{points.length !== 1 ? 's' : ''}? This cannot be undone.</span>
+                  <div className="te__clear-confirm-btns">
+                    <button className="te__clear-confirm-cancel" onClick={() => setShowClearConfirm(false)}>Cancel</button>
+                    <button className="te__clear-confirm-ok" onClick={() => {
+                      setPoints([]);
+                      setScore(INITIAL_SCORE);
+                      scoreRef.current = INITIAL_SCORE;
+                      pointsRef.current = [];
+                      setShowClearConfirm(false);
+                    }}>Yes, clear all</button>
+                  </div>
+                </div>
+              )}
+              <div className="te__points-col-headers">
+                <span className="te__point-num"></span>
+                <span className="te__point-score">
+                  <span className="te__col-label">Game</span>
+                  <span className="te__col-label">Point</span>
+                </span>
+                <span className="te__col-label te__col-label--time">Time</span>
+              </div>
+              <div className="te__points-rows">
+                {points.map((pt, i) => {
+                  const scoreAfter = addPoint(pt.scoreBefore, pt.winner);
+                  const setCompleted = scoreAfter.sets.length > pt.scoreBefore.sets.length;
+                  const gameWon = setCompleted
+                    || scoreAfter.currentSet[0] !== pt.scoreBefore.currentSet[0]
+                    || scoreAfter.currentSet[1] !== pt.scoreBefore.currentSet[1];
+                  const matchWon = !!scoreAfter.matchWinner;
+                  const winnerName = pt.winner === 1 ? p1Name : p2Name;
+                  let bannerText = null;
+                  if (gameWon) {
+                    if (matchWon) {
+                      bannerText = `${winnerName} wins the match`;
+                    } else if (setCompleted) {
+                      const s = scoreAfter.sets[scoreAfter.sets.length - 1];
+                      bannerText = `${winnerName} wins the set — ${s.p1}–${s.p2}`;
+                    } else {
+                      const [g1, g2] = scoreAfter.currentSet;
+                      bannerText = `${winnerName} wins the game — ${g1}–${g2}`;
+                    }
+                  }
+                  const tiebreakStarted = gameWon && !setCompleted && scoreAfter.isTiebreak;
+                  const nextServer = gameWon && !matchWon ? computeServer(scoreAfter, initialServer) : null;
+                  const nextServerName = nextServer === 0 ? p1Name : p2Name;
+                  return (
+                    <React.Fragment key={pt.id}>
+                      <div className={`te__point-row te__point-row--p${pt.winner}`} onClick={() => seekTo(pt.startTime)} style={{ cursor: 'pointer' }}>
+                        <span className="te__point-num">#{i + 1}</span>
+                        <span className="te__point-score">
+                          <span className="te__point-game-score">{gameScoreLabel(pt.scoreBefore)}</span>
+                          <span className="te__point-pt-score">{scoreLabel(pt.scoreBefore)}</span>
+                        </span>
+                        <span className="te__point-time">{fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}</span>
+                        <span className="te__point-menu-wrap">
+                          <button
+                            className="te__point-menu-btn"
+                            onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === pt.id ? null : pt.id); }}
+                            title="More options"
+                          >⋮</button>
+                          {openMenuId === pt.id && (
+                            <div className="te__point-menu" onClick={e => e.stopPropagation()}>
+                              <div className="te__point-menu-info">
+                                <span className={`te__point-menu-dot te__point-menu-dot--p${pt.serving + 1}`}>●</span>
+                                {pt.serving === 0 ? p1Name : p2Name} serving
+                              </div>
+                              <button
+                                className="te__point-menu-item"
+                                onClick={() => { openEditScore(pt); setOpenMenuId(null); }}
+                              >
+                                ✎ Edit score at this point
+                              </button>
+                            </div>
+                          )}
+                        </span>
+                        <button
+                          className={`te__point-winner te__point-winner--btn te__point-winner--p${pt.winner}`}
+                          onClick={e => { e.stopPropagation(); editPointWinner(pt.id, pt.winner === 1 ? 2 : 1); }}
+                          title="Click to swap winner"
+                        >
+                          {pt.winner === 1 ? p1Name : p2Name} ⇄
+                        </button>
+                        <button className="te__point-del" onClick={e => { e.stopPropagation(); removePoint(pt.id); }} title="Remove">×</button>
+                      </div>
+                      {editScoreId === pt.id && editScoreDraft && (
+                        <div className="te__edit-score" onClick={e => e.stopPropagation()}>
+                          <div className="te__edit-score-title">Edit score before point #{i + 1}</div>
+<div className="te__edit-score-row">
+                            <label>Past sets</label>
+                            <input
+                              className="te__edit-score-input"
+                              value={editScoreDraft.setsStr}
+                              placeholder="e.g. 6-3 7-5"
+                              onChange={e => setEditScoreDraft(d => ({ ...d, setsStr: e.target.value }))}
+                            />
+                          </div>
+                          <div className="te__edit-score-row">
+                            <label>Current set games</label>
+                            <div className="te__edit-score-pair">
+                              <input type="number" min="0" max="7" className="te__edit-score-num"
+                                value={editScoreDraft.g1}
+                                onChange={e => setEditScoreDraft(d => ({ ...d, g1: e.target.value }))} />
+                              <span className="te__edit-score-dash">–</span>
+                              <input type="number" min="0" max="7" className="te__edit-score-num"
+                                value={editScoreDraft.g2}
+                                onChange={e => setEditScoreDraft(d => ({ ...d, g2: e.target.value }))} />
+                            </div>
+                          </div>
+                          <div className="te__edit-score-row">
+                            <label>Points{editScoreDraft.isTb ? ' (tiebreak)' : ''}</label>
+                            {editScoreDraft.isTb ? (
+                              <div className="te__edit-score-pair">
+                                <input type="number" min="0" className="te__edit-score-num"
+                                  value={editScoreDraft.p1pts}
+                                  onChange={e => setEditScoreDraft(d => ({ ...d, p1pts: e.target.value }))} />
+                                <span className="te__edit-score-dash">–</span>
+                                <input type="number" min="0" className="te__edit-score-num"
+                                  value={editScoreDraft.p2pts}
+                                  onChange={e => setEditScoreDraft(d => ({ ...d, p2pts: e.target.value }))} />
+                              </div>
+                            ) : (
+                              <div className="te__edit-score-pair">
+                                <select className="te__edit-score-sel"
+                                  value={editScoreDraft.p1pts}
+                                  onChange={e => setEditScoreDraft(d => ({ ...d, p1pts: e.target.value }))}>
+                                  {['0','15','30','40','Ad'].map(v => <option key={v}>{v}</option>)}
+                                </select>
+                                <span className="te__edit-score-dash">–</span>
+                                <select className="te__edit-score-sel"
+                                  value={editScoreDraft.p2pts}
+                                  onChange={e => setEditScoreDraft(d => ({ ...d, p2pts: e.target.value }))}>
+                                  {['0','15','30','40','Ad'].map(v => <option key={v}>{v}</option>)}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                          <label className="te__edit-score-check">
+                            <input type="checkbox" checked={editScoreDraft.isTb}
+                              onChange={e => setEditScoreDraft(d => ({ ...d, isTb: e.target.checked }))} />
+                            Tiebreak
+                          </label>
+                          {pt.scoreOverride && (
+                            <div className="te__edit-score-override-note">
+                              <span>⚠ Override active —</span>
+                              <button className="te__edit-score-clear-override"
+                                onClick={() => {
+                                  const updated = points.map(p => p.id === pt.id ? { ...p, scoreOverride: undefined } : p);
+                                  const { points: recomputed, finalScore } = recomputeScores(updated, initialServer, matchConfigRef.current);
+                                  setPoints(recomputed); setScore(finalScore); scoreRef.current = finalScore;
+                                  setEditScoreId(null); setEditScoreDraft(null);
+                                }}>
+                                clear override
+                              </button>
+                            </div>
+                          )}
+                          <div className="te__edit-score-actions">
+                            <button className="te__edit-score-save" onClick={saveEditScore}>Save</button>
+                            <button className="te__edit-score-cancel" onClick={() => { setEditScoreId(null); setEditScoreDraft(null); }}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
+                      {bannerText && (
+                        <div className={`te__game-banner te__game-banner--p${pt.winner}${matchWon ? ' te__game-banner--match' : setCompleted ? ' te__game-banner--set' : ''}`}>
+                          <span>{bannerText}</span>
+                          {!matchWon && !tiebreakStarted && (
+                            <span className="te__banner-serve">
+                              🎾 {nextServerName} to serve
+                              <button
+                                className="te__banner-swap"
+                                onClick={() => setInitialServer(1 - initialServer)}
+                                title="Swap who serves next"
+                              >↺ swap</button>
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {tiebreakStarted && (
+                        <div className="te__tiebreak-banner">
+                          <span>Tiebreak</span>
+                          <span className="te__banner-serve">
+                            🎾 {nextServerName} to serve first
+                            <button
+                              className="te__banner-swap"
+                              onClick={() => setInitialServer(1 - initialServer)}
+                              title="Swap who serves first in the tiebreak"
+                            >↺ swap</button>
+                          </span>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          )}
 
           {/* ── Scoreboard customizer modal ──────── */}
           {showCustomizer && (
@@ -1161,7 +1161,7 @@ export default function TennisEditor() {
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
