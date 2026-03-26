@@ -37,10 +37,9 @@
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
-/* Workspace mode: full-bleed, no centering */
+/* Workspace mode: full-bleed, natural scroll */
 .te.te--workspace {
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
   padding: 0;
   align-items: stretch;
 }
@@ -212,20 +211,17 @@
 }
 .te__body {
   flex: 1;
-  overflow: hidden;
   position: relative;
 }
-/* Main scrollable content column */
+/* Main content column — natural flow, page scrolls */
 .te__content {
   width: 100%;
   max-width: 960px;
   margin: 0 auto;
-  height: 100%;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 1rem 1.25rem;
+  padding: 1rem 1.25rem 4rem;
   box-sizing: border-box;
 }
 /* Export bar — appears above point timeline as primary action */
@@ -235,6 +231,9 @@
 
 /* ── Top bar (workspace) ──────────────────────────────────── */
 .te__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   height: 48px;
   flex-shrink: 0;
   background: var(--surface);
@@ -554,7 +553,6 @@
 .te__video {
   width: 100%;
   display: block;
-  max-height: calc(100vh - 48px - 180px);
   object-fit: contain;
   background: #000;
 }
