@@ -101,9 +101,12 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
             const pngData = await canvasToUint8Array(canvas);
             await ff.writeFile('overlay.png', pngData);
 
+            // The scoreboard canvas is rendered at 2× (SCALE=2) for crispness.
+            // Scale it back to 1× (CSS pixel size) before burning in, so the
+            // overlay appears at the same proportion as the web app overlay.
             const fc = sf
-              ? `[0:v][1:v]overlay=14:14[ov];[ov]${sf}[vout]`
-              : `[0:v][1:v]overlay=14:14[vout]`;
+              ? `[1:v]scale=iw/2:ih/2[sb];[0:v][sb]overlay=14:14[ov];[ov]${sf}[vout]`
+              : `[1:v]scale=iw/2:ih/2[sb];[0:v][sb]overlay=14:14[vout]`;
 
             await ff.exec([
               '-ss', pt.startTime.toFixed(3),
