@@ -74,6 +74,8 @@ export default function TennisEditor() {
   // null = no prompt; object = saved session to offer restoring
   const [restorePrompt, setRestorePrompt] = useState(null);
   const [sampleLoading, setSampleLoading] = useState(false);
+  const [showPanel, setShowPanel] = useState(false);
+  const [scoreboardSectionOpen, setScoreboardSectionOpen] = useState(true);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -656,6 +658,13 @@ export default function TennisEditor() {
             <button className="te__change-btn" onClick={() => fileInputRef.current.click()}>
               Change video
             </button>
+            <button
+              className={`te__panel-toggle-btn${showPanel ? ' te__panel-toggle-btn--active' : ''}`}
+              onClick={() => setShowPanel(p => !p)}
+              title="Toggle settings panel"
+            >
+              ◧ Settings
+            </button>
             <input ref={fileInputRef} type="file" accept="video/*"
               onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
           </div>
@@ -676,108 +685,6 @@ export default function TennisEditor() {
               </div>
             </div>
           )}
-
-          {/* Player setup — collapsible, open by default */}
-          <div className="te__match-settings">
-            <button
-              className="te__match-settings-toggle"
-              onClick={() => setPlayerSetupOpen(o => !o)}
-            >
-              <span className="te__match-settings-label">Player Setup</span>
-              {!playerSetupOpen && (
-                <span className="te__match-settings-summary">
-                  {p1Name || 'Player 1'} vs {p2Name || 'Player 2'} · {initialServer === 0 ? p1Name || 'Player 1' : p2Name || 'Player 2'} serves
-                </span>
-              )}
-              <span className="te__match-settings-chevron">{playerSetupOpen ? '▲' : '▼'}</span>
-            </button>
-            {playerSetupOpen && (
-              <div className="te__match-settings-body">
-                <div className="te__names">
-                  <div className="te__name-field te__name-field--p1">
-                    <input
-                      id="p1-name"
-                      type="text"
-                      value={p1Name}
-                      onChange={e => setP1Name(e.target.value.slice(0, 20))}
-                      maxLength={20}
-                      placeholder=" "
-                    />
-                    <label htmlFor="p1-name">Player/Team 1</label>
-                  </div>
-                  <div className="te__name-field te__name-field--p2">
-                    <input
-                      id="p2-name"
-                      type="text"
-                      value={p2Name}
-                      onChange={e => setP2Name(e.target.value.slice(0, 20))}
-                      maxLength={20}
-                      placeholder=" "
-                    />
-                    <label htmlFor="p2-name">Player/Team 2</label>
-                  </div>
-                </div>
-                <div className="te__serve-picker">
-                  <span className="te__serve-picker-label">Serves first</span>
-                  <button
-                    className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
-                    onClick={() => setInitialServer(0)}
-                  >🎾 {p1Name}</button>
-                  <button
-                    className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
-                    onClick={() => setInitialServer(1)}
-                  >🎾 {p2Name}</button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Match settings */}
-          <div className="te__match-settings">
-            <button
-              className="te__match-settings-toggle"
-              onClick={() => setMatchSettingsOpen(o => !o)}
-            >
-              <span className="te__match-settings-label">Match Settings</span>
-              {!matchSettingsOpen && (
-                <span className="te__match-settings-summary">
-                  {matchConfig.matchTiebreak ? 'Match Tiebreak' : 'Full Set'} ·{' '}
-                  {matchConfig.noAds ? 'No-Ads' : 'Ads'}
-                </span>
-              )}
-              <span className="te__match-settings-chevron">{matchSettingsOpen ? '▲' : '▼'}</span>
-            </button>
-            {matchSettingsOpen && (
-              <div className="te__match-settings-body">
-                <div className="te__setting-row">
-                  <span className="te__setting-row-label">3rd Set</span>
-                  <div className="te__setting-pills">
-                    <button
-                      className={`te__setting-pill${!matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
-                      onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: false }))}
-                    >Full Set</button>
-                    <button
-                      className={`te__setting-pill${matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
-                      onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: true }))}
-                    >Match Tiebreak</button>
-                  </div>
-                </div>
-                <div className="te__setting-row">
-                  <span className="te__setting-row-label">Scoring</span>
-                  <div className="te__setting-pills">
-                    <button
-                      className={`te__setting-pill${!matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
-                      onClick={() => setMatchConfig(c => ({ ...c, noAds: false }))}
-                    >Ads</button>
-                    <button
-                      className={`te__setting-pill${matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
-                      onClick={() => setMatchConfig(c => ({ ...c, noAds: true }))}
-                    >No-Ads</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Video + scoreboard overlay + custom controls */}
           <div
@@ -884,30 +791,6 @@ export default function TennisEditor() {
             <span><kbd>R</kbd> P2 wins</span>
             <span><kbd>Del</kbd><kbd>Del</kbd> Delete last</span>
           </div>
-
-          {/* Scoreboard customizer trigger */}
-          <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>
-            ✦ Customize scoreboard
-          </button>
-
-          {/* Capture frame */}
-          <button
-            className="te__capture-btn"
-            onClick={captureFrame}
-            title="Download current frame with scoreboard as JPEG"
-          >
-            📷 Capture frame
-          </button>
-
-          {/* Export */}
-          <VideoExporter
-            videoFile={videoFile}
-            points={points}
-            fileName={fileName}
-            names={[p1Name, p2Name]}
-            serving={serving}
-            scoreboardTheme={scoreboardTheme}
-          />
 
           {/* Point timeline */}
           <PointTimeline
@@ -1124,7 +1007,137 @@ export default function TennisEditor() {
             </div>
           )}
 
+          {/* ── Figma-style settings panel ──────── */}
+          {showPanel && (
+            <div className="te__panel-backdrop" onClick={() => setShowPanel(false)} />
           )}
+          <div className={`te__panel${showPanel ? ' te__panel--open' : ''}`}>
+            <div className="te__panel-header">
+              <span className="te__panel-title">Settings</span>
+              <button className="te__panel-close" onClick={() => setShowPanel(false)}>✕</button>
+            </div>
+            <div className="te__panel-body">
+
+              {/* Players section */}
+              <div className="te__panel-section">
+                <button className="te__panel-section-hdr" onClick={() => setPlayerSetupOpen(o => !o)}>
+                  <span>Players</span>
+                  <span className="te__panel-chevron">{playerSetupOpen ? '▲' : '▼'}</span>
+                </button>
+                {playerSetupOpen && (
+                  <div className="te__panel-section-body">
+                    <div className="te__names te__names--panel">
+                      <div className="te__name-field te__name-field--p1">
+                        <input
+                          id="p1-name-panel"
+                          type="text"
+                          value={p1Name}
+                          onChange={e => setP1Name(e.target.value.slice(0, 20))}
+                          maxLength={20}
+                          placeholder=" "
+                        />
+                        <label htmlFor="p1-name-panel">Player/Team 1</label>
+                      </div>
+                      <div className="te__name-field te__name-field--p2">
+                        <input
+                          id="p2-name-panel"
+                          type="text"
+                          value={p2Name}
+                          onChange={e => setP2Name(e.target.value.slice(0, 20))}
+                          maxLength={20}
+                          placeholder=" "
+                        />
+                        <label htmlFor="p2-name-panel">Player/Team 2</label>
+                      </div>
+                    </div>
+                    <div className="te__serve-picker">
+                      <span className="te__serve-picker-label">Serves first</span>
+                      <button
+                        className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
+                        onClick={() => setInitialServer(0)}
+                      >🎾 {p1Name}</button>
+                      <button
+                        className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
+                        onClick={() => setInitialServer(1)}
+                      >🎾 {p2Name}</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Match Settings section */}
+              <div className="te__panel-section">
+                <button className="te__panel-section-hdr" onClick={() => setMatchSettingsOpen(o => !o)}>
+                  <span>Match Settings</span>
+                  <span className="te__panel-chevron">{matchSettingsOpen ? '▲' : '▼'}</span>
+                </button>
+                {matchSettingsOpen && (
+                  <div className="te__panel-section-body">
+                    <div className="te__setting-row">
+                      <span className="te__setting-row-label">3rd Set</span>
+                      <div className="te__setting-pills">
+                        <button
+                          className={`te__setting-pill${!matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: false }))}
+                        >Full Set</button>
+                        <button
+                          className={`te__setting-pill${matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: true }))}
+                        >Match Tiebreak</button>
+                      </div>
+                    </div>
+                    <div className="te__setting-row">
+                      <span className="te__setting-row-label">Scoring</span>
+                      <div className="te__setting-pills">
+                        <button
+                          className={`te__setting-pill${!matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, noAds: false }))}
+                        >Ads</button>
+                        <button
+                          className={`te__setting-pill${matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, noAds: true }))}
+                        >No-Ads</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Scoreboard section */}
+              <div className="te__panel-section">
+                <button className="te__panel-section-hdr" onClick={() => setScoreboardSectionOpen(o => !o)}>
+                  <span>Scoreboard</span>
+                  <span className="te__panel-chevron">{scoreboardSectionOpen ? '▲' : '▼'}</span>
+                </button>
+                {scoreboardSectionOpen && (
+                  <div className="te__panel-section-body">
+                    <ScorePreview
+                      score={displayState.score}
+                      names={[p1Name, p2Name]}
+                      serving={displayState.serving}
+                      theme={scoreboardTheme}
+                      scale={0.78}
+                    />
+                    <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>✦ Customize scoreboard</button>
+                    <button className="te__capture-btn" onClick={captureFrame} title="Download current frame with scoreboard as JPEG">📷 Capture frame</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Export section */}
+              <div className="te__panel-section te__panel-section--export">
+                <VideoExporter
+                  videoFile={videoFile}
+                  points={points}
+                  fileName={fileName}
+                  names={[p1Name, p2Name]}
+                  serving={serving}
+                  scoreboardTheme={scoreboardTheme}
+                />
+              </div>
+
+            </div>
+          </div>
 
           {/* ── Scoreboard customizer modal ──────── */}
           {showCustomizer && (
