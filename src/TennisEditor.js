@@ -781,18 +781,6 @@ export default function TennisEditor() {
             <span><kbd>Del</kbd><kbd>Del</kbd> Delete last</span>
           </div>
 
-          {/* Export — primary action */}
-          <div className="te__export-bar">
-            <VideoExporter
-              videoFile={videoFile}
-              points={points}
-              fileName={fileName}
-              names={[p1Name, p2Name]}
-              serving={serving}
-              scoreboardTheme={scoreboardTheme}
-            />
-          </div>
-
           {/* Point timeline */}
           <PointTimeline
             points={points}
@@ -1109,6 +1097,31 @@ export default function TennisEditor() {
                     />
                     <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>✦ Customize scoreboard</button>
                     <button className="te__capture-btn" onClick={captureFrame} title="Download current frame with scoreboard as JPEG">📷 Capture frame</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Export section */}
+              <div className="te__sb-section">
+                <button
+                  className="te__sb-section-hdr"
+                  onClick={() => sidebarOpen ? null : setSidebarOpen(true)}
+                  title="Export"
+                  style={{ cursor: sidebarOpen ? 'default' : 'pointer' }}
+                >
+                  <span className="te__sb-icon">↓</span>
+                  {sidebarOpen && <span className="te__sb-label">Export</span>}
+                </button>
+                {sidebarOpen && (
+                  <div className="te__sb-section-body">
+                    <VideoExporter
+                      videoFile={videoFile}
+                      points={points}
+                      fileName={fileName}
+                      names={[p1Name, p2Name]}
+                      serving={serving}
+                      scoreboardTheme={scoreboardTheme}
+                    />
                   </div>
                 )}
               </div>
