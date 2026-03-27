@@ -1171,7 +1171,7 @@ kbd {
 }
 .te__setting-pill {
   padding: 5px 14px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 99px;
   color: var(--text-2);
@@ -1187,7 +1187,7 @@ kbd {
 .te__setting-pill--active {
   background: var(--accent-dim);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent);
 }
 
 /* ── 3-dot point menu ─────────────────────────────────────── */
