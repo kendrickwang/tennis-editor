@@ -763,13 +763,15 @@ export default function TennisEditor() {
             </div>
           </div>
 
-          {/* Status bar — directly below the video */}
-          <div className={`te__status te__status--${status.kind}`}>
-            {pendingStart !== null && (
-              <span className="te__status-marker">● Start: {fmtTime(pendingStart)}</span>
-            )}
-            {status.text}
-          </div>
+          {/* Status bar — only rendered when there's something to show */}
+          {(status.text || pendingStart !== null) && (
+            <div className={`te__status te__status--${status.kind}`}>
+              {pendingStart !== null && (
+                <span className="te__status-marker">● Start: {fmtTime(pendingStart)}</span>
+              )}
+              {status.text}
+            </div>
+          )}
 
           {/* Keyboard hints */}
           <div className="te__hints">
@@ -1009,9 +1011,13 @@ export default function TennisEditor() {
                   onClick={() => sidebarOpen ? setPlayerSetupOpen(o => !o) : setSidebarOpen(true)}
                   title="Players"
                 >
-                  <span className="te__sb-icon">◉</span>
+                  <span className="te__sb-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                  </span>
                   {sidebarOpen && <span className="te__sb-label">Players</span>}
-                  {sidebarOpen && <span className="te__sb-chevron">{playerSetupOpen ? '▲' : '▼'}</span>}
+                  {sidebarOpen && <span className="te__sb-chevron">{playerSetupOpen
+                    ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>}</span>}
                 </button>
                 {sidebarOpen && playerSetupOpen && (
                   <div className="te__sb-section-body">
@@ -1047,9 +1053,13 @@ export default function TennisEditor() {
                   onClick={() => sidebarOpen ? setMatchSettingsOpen(o => !o) : setSidebarOpen(true)}
                   title="Match Settings"
                 >
-                  <span className="te__sb-icon">⚙</span>
+                  <span className="te__sb-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                  </span>
                   {sidebarOpen && <span className="te__sb-label">Match Settings</span>}
-                  {sidebarOpen && <span className="te__sb-chevron">{matchSettingsOpen ? '▲' : '▼'}</span>}
+                  {sidebarOpen && <span className="te__sb-chevron">{matchSettingsOpen
+                    ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>}</span>}
                 </button>
                 {sidebarOpen && matchSettingsOpen && (
                   <div className="te__sb-section-body">
@@ -1082,9 +1092,13 @@ export default function TennisEditor() {
                   onClick={() => sidebarOpen ? setScoreboardSectionOpen(o => !o) : setSidebarOpen(true)}
                   title="Scoreboard"
                 >
-                  <span className="te__sb-icon">▦</span>
+                  <span className="te__sb-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+                  </span>
                   {sidebarOpen && <span className="te__sb-label">Scoreboard</span>}
-                  {sidebarOpen && <span className="te__sb-chevron">{scoreboardSectionOpen ? '▲' : '▼'}</span>}
+                  {sidebarOpen && <span className="te__sb-chevron">{scoreboardSectionOpen
+                    ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>}</span>}
                 </button>
                 {sidebarOpen && scoreboardSectionOpen && (
                   <div className="te__sb-section-body">
@@ -1109,7 +1123,9 @@ export default function TennisEditor() {
                   title="Export"
                   style={{ cursor: sidebarOpen ? 'default' : 'pointer' }}
                 >
-                  <span className="te__sb-icon">↓</span>
+                  <span className="te__sb-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15V3"/><polyline points="7 10 12 15 17 10"/><path d="M3 17v1a3 3 0 003 3h12a3 3 0 003-3v-1"/></svg>
+                  </span>
                   {sidebarOpen && <span className="te__sb-label">Export</span>}
                 </button>
                 {sidebarOpen && (
@@ -1134,7 +1150,9 @@ export default function TennisEditor() {
               onClick={() => setSidebarOpen(o => !o)}
               title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
-              {sidebarOpen ? '◁' : '▷'}
+              {sidebarOpen
+                ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>}
             </button>
           </div>
 
