@@ -697,19 +697,19 @@
   border-color: var(--border);
 }
 .te__status--info {
-  background: rgba(99, 102, 241, 0.1);
-  color: #a5b4fc;
-  border-color: rgba(99, 102, 241, 0.25);
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: rgba(91, 91, 214, 0.3);
 }
 .te__status--success {
-  background: rgba(16, 185, 129, 0.1);
-  color: #6ee7b7;
-  border-color: rgba(16, 185, 129, 0.25);
+  background: var(--p1-bg);
+  color: var(--p1);
+  border-color: var(--p1-border);
 }
 .te__status--warn {
-  background: rgba(249, 115, 22, 0.1);
-  color: #fdba74;
-  border-color: rgba(249, 115, 22, 0.25);
+  background: var(--p2-bg);
+  color: var(--p2);
+  border-color: var(--p2-border);
 }
 
 .te__status-marker {
