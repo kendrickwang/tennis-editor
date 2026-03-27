@@ -1,28 +1,29 @@
 /* ── Design Tokens ─────────────────────────────────────────── */
 :root {
-  --bg:          #07080F;
-  --surface:     #0D0F1E;
-  --surface-2:   #131627;
-  --border:      #1C1F3C;
-  --border-lit:  #2E3268;
-  --accent:      #6366F1;
-  --accent-glow: rgba(99, 102, 241, 0.18);
-  --accent-dim:  rgba(99, 102, 241, 0.1);
-  --p1:          #10B981;
-  --p1-bg:       rgba(16, 185, 129, 0.12);
-  --p1-border:   rgba(16, 185, 129, 0.3);
-  --p2:          #F97316;
-  --p2-bg:       rgba(249, 115, 22, 0.12);
-  --p2-border:   rgba(249, 115, 22, 0.3);
-  --gold:        #FBBF24;
-  --error:       #F87171;
-  --text:        #EDF0FF;
-  --text-2:      #7B82A8;
-  --text-3:      #3A4068;
+  --bg:          #F4F5F9;
+  --surface:     #FFFFFF;
+  --surface-2:   #F0F1F7;
+  --surface-3:   #E8EAF4;
+  --border:      #E2E5F0;
+  --border-lit:  #C8CCE6;
+  --accent:      #5B5BD6;
+  --accent-glow: rgba(91, 91, 214, 0.14);
+  --accent-dim:  rgba(91, 91, 214, 0.08);
+  --p1:          #059669;
+  --p1-bg:       rgba(5, 150, 105, 0.08);
+  --p1-border:   rgba(5, 150, 105, 0.25);
+  --p2:          #EA580C;
+  --p2-bg:       rgba(234, 88, 12, 0.08);
+  --p2-border:   rgba(234, 88, 12, 0.25);
+  --gold:        #D97706;
+  --error:       #DC2626;
+  --text:        #111827;
+  --text-2:      #6B7280;
+  --text-3:      #9CA3AF;
   --radius:      14px;
   --radius-sm:   8px;
-  --shadow:      0 4px 24px rgba(0, 0, 0, 0.5);
-  --shadow-lg:   0 8px 48px rgba(0, 0, 0, 0.7);
+  --shadow:      0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-lg:   0 8px 32px rgba(0,0,0,0.10);
 }
 
 /* ── Root ─────────────────────────────────────────────────── */
@@ -294,7 +295,7 @@
   height: calc(100vh - 48px);
   background: var(--surface);
   border-left: 1px solid var(--border);
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.07);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -384,8 +385,8 @@
   transition: color 0.15s, background 0.15s;
 }
 .te__sidebar-toggle:hover {
-  color: #fff;
-  background: var(--surface-3, #3a3a3a);
+  color: var(--accent);
+  background: var(--accent-dim);
 }
 .te__sidebar-toggle svg { display: block; }
 
