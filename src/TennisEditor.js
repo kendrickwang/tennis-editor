@@ -73,6 +73,9 @@ export default function TennisEditor() {
   const [pendingDelete, setPendingDelete] = useState(false);
   // null = no prompt; object = saved session to offer restoring
   const [restorePrompt, setRestorePrompt] = useState(null);
+  const [sampleLoading, setSampleLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [scoreboardSectionOpen, setScoreboardSectionOpen] = useState(true);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -213,6 +216,23 @@ export default function TennisEditor() {
       setStatus({ text: `Could not convert video: ${err.message}`, kind: 'error' });
     } finally {
       setTranscodeProgress(null);
+    }
+  }
+
+  // ── Sample video loader ────────────────────────────────────
+  async function loadSampleVideo() {
+    if (sampleLoading) return;
+    setSampleLoading(true);
+    try {
+      const res = await fetch(`${process.env.PUBLIC_URL}/demo/demo.mp4`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const file = new File([blob], 'demo.mp4', { type: 'video/mp4' });
+      await handleFile(file);
+    } catch (err) {
+      console.error('[sample] failed to load demo video:', err);
+    } finally {
+      setSampleLoading(false);
     }
   }
 
@@ -560,13 +580,14 @@ export default function TennisEditor() {
 
   // ── Render ─────────────────────────────────────────────────
   return (
-    <div className="te">
+    <div className={`te${videoSrc ? ' te--workspace' : ''}`}>
       {showHelp && (
         <HelpModal names={[p1Name, p2Name]} onAccept={() => setShowHelp(false)} />
       )}
-      <h1 className="te__title">Court Clipper</h1>
+      {!videoSrc && <h1 className="te__title">Court Clipper</h1>}
 
       {!videoSrc ? (
+        <>
         <div
           className={`te__drop${isDragging ? ' te__drop--active' : ''}${transcodeProgress !== null ? ' te__drop--transcoding' : ''}`}
           onClick={() => transcodeProgress === null && fileInputRef.current.click()}
@@ -597,22 +618,31 @@ export default function TennisEditor() {
             </>
           )}
         </div>
+        {transcodeProgress === null && (
+          <button
+            className="te__sample-btn"
+            onClick={loadSampleVideo}
+            disabled={sampleLoading}
+          >
+            {sampleLoading ? 'Loading sample…' : 'or try a sample match video →'}
+          </button>
+        )}
+        </>
       ) : (
         <div className="te__workspace">
-          {/* File bar */}
-          <div className="te__file-bar">
-            <span className="te__file-name">{fileName}</span>
+          {/* Top bar */}
+          <div className="te__topbar">
+            <span className="te__topbar-logo">Court Clipper</span>
+            <span className="te__topbar-file">🎬 {fileName}</span>
+            <div className="te__topbar-spacer" />
+            <button className="te__topbar-btn" onClick={() => setShowHelp(true)} title="How to use">?</button>
+            <div className="te__topbar-sep" />
             {points.length > 0 && (
-              <button className="te__session-btn" onClick={saveSession} title="Download edits as a JSON backup">
-                ↓ Save session
-              </button>
+              <button className="te__topbar-btn" onClick={saveSession} title="Download edits as a JSON backup">↓ Save</button>
             )}
-            <label className="te__session-btn" title="Restore edits from a saved session file">
-              ↑ Load session
-              <input
-                ref={sessionFileInputRef}
-                type="file"
-                accept=".json,application/json"
+            <label className="te__topbar-btn" title="Restore edits from a saved session file">
+              ↑ Load
+              <input ref={sessionFileInputRef} type="file" accept=".json,application/json"
                 className="te__file-input"
                 onChange={e => {
                   const f = e.target.files[0];
@@ -621,134 +651,29 @@ export default function TennisEditor() {
                   reader.onload = evt => applySession(evt.target.result);
                   reader.readAsText(f);
                   e.target.value = '';
-                }}
-              />
+                }} />
             </label>
-            <button className="te__change-btn" onClick={() => fileInputRef.current.click()}>
-              Change video
-            </button>
+            <button className="te__topbar-btn" onClick={() => fileInputRef.current.click()}>Change video</button>
             <input ref={fileInputRef} type="file" accept="video/*"
               onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
           </div>
 
-          {/* Restore prompt — shown when a matching auto-saved session is found */}
+          {/* Restore prompt */}
           {restorePrompt && (
             <div className="te__restore-banner">
               <span className="te__restore-text">
                 Found <strong>{restorePrompt.points.length} saved point{restorePrompt.points.length !== 1 ? 's' : ''}</strong> from your last session with this file.
               </span>
               <div className="te__restore-btns">
-                <button className="te__restore-yes" onClick={() => applySession(restorePrompt)}>
-                  Restore
-                </button>
-                <button className="te__restore-no" onClick={() => setRestorePrompt(null)}>
-                  Dismiss
-                </button>
+                <button className="te__restore-yes" onClick={() => applySession(restorePrompt)}>Restore</button>
+                <button className="te__restore-no" onClick={() => setRestorePrompt(null)}>Dismiss</button>
               </div>
             </div>
           )}
 
-          {/* Player setup — collapsible, open by default */}
-          <div className="te__match-settings">
-            <button
-              className="te__match-settings-toggle"
-              onClick={() => setPlayerSetupOpen(o => !o)}
-            >
-              <span className="te__match-settings-label">Player Setup</span>
-              {!playerSetupOpen && (
-                <span className="te__match-settings-summary">
-                  {p1Name || 'Player 1'} vs {p2Name || 'Player 2'} · {initialServer === 0 ? p1Name || 'Player 1' : p2Name || 'Player 2'} serves
-                </span>
-              )}
-              <span className="te__match-settings-chevron">{playerSetupOpen ? '▲' : '▼'}</span>
-            </button>
-            {playerSetupOpen && (
-              <div className="te__match-settings-body">
-                <div className="te__names">
-                  <div className="te__name-field te__name-field--p1">
-                    <input
-                      id="p1-name"
-                      type="text"
-                      value={p1Name}
-                      onChange={e => setP1Name(e.target.value.slice(0, 20))}
-                      maxLength={20}
-                      placeholder=" "
-                    />
-                    <label htmlFor="p1-name">Player/Team 1</label>
-                  </div>
-                  <div className="te__name-field te__name-field--p2">
-                    <input
-                      id="p2-name"
-                      type="text"
-                      value={p2Name}
-                      onChange={e => setP2Name(e.target.value.slice(0, 20))}
-                      maxLength={20}
-                      placeholder=" "
-                    />
-                    <label htmlFor="p2-name">Player/Team 2</label>
-                  </div>
-                </div>
-                <div className="te__serve-picker">
-                  <span className="te__serve-picker-label">Serves first</span>
-                  <button
-                    className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
-                    onClick={() => setInitialServer(0)}
-                  >🎾 {p1Name}</button>
-                  <button
-                    className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
-                    onClick={() => setInitialServer(1)}
-                  >🎾 {p2Name}</button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Match settings */}
-          <div className="te__match-settings">
-            <button
-              className="te__match-settings-toggle"
-              onClick={() => setMatchSettingsOpen(o => !o)}
-            >
-              <span className="te__match-settings-label">Match Settings</span>
-              {!matchSettingsOpen && (
-                <span className="te__match-settings-summary">
-                  {matchConfig.matchTiebreak ? 'Match Tiebreak' : 'Full Set'} ·{' '}
-                  {matchConfig.noAds ? 'No-Ads' : 'Ads'}
-                </span>
-              )}
-              <span className="te__match-settings-chevron">{matchSettingsOpen ? '▲' : '▼'}</span>
-            </button>
-            {matchSettingsOpen && (
-              <div className="te__match-settings-body">
-                <div className="te__setting-row">
-                  <span className="te__setting-row-label">3rd Set</span>
-                  <div className="te__setting-pills">
-                    <button
-                      className={`te__setting-pill${!matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
-                      onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: false }))}
-                    >Full Set</button>
-                    <button
-                      className={`te__setting-pill${matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
-                      onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: true }))}
-                    >Match Tiebreak</button>
-                  </div>
-                </div>
-                <div className="te__setting-row">
-                  <span className="te__setting-row-label">Scoring</span>
-                  <div className="te__setting-pills">
-                    <button
-                      className={`te__setting-pill${!matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
-                      onClick={() => setMatchConfig(c => ({ ...c, noAds: false }))}
-                    >Ads</button>
-                    <button
-                      className={`te__setting-pill${matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
-                      onClick={() => setMatchConfig(c => ({ ...c, noAds: true }))}
-                    >No-Ads</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Two-column body: content + sidebar */}
+          <div className="te__body">
+          <div className="te__content">
 
           {/* Video + scoreboard overlay + custom controls */}
           <div
@@ -838,13 +763,15 @@ export default function TennisEditor() {
             </div>
           </div>
 
-          {/* Status bar — directly below the video */}
-          <div className={`te__status te__status--${status.kind}`}>
-            {pendingStart !== null && (
-              <span className="te__status-marker">● Start: {fmtTime(pendingStart)}</span>
-            )}
-            {status.text}
-          </div>
+          {/* Status bar — only rendered when there's something to show */}
+          {(status.text || pendingStart !== null) && (
+            <div className={`te__status te__status--${status.kind}`}>
+              {pendingStart !== null && (
+                <span className="te__status-marker">● Start: {fmtTime(pendingStart)}</span>
+              )}
+              {status.text}
+            </div>
+          )}
 
           {/* Keyboard hints */}
           <div className="te__hints">
@@ -855,30 +782,6 @@ export default function TennisEditor() {
             <span><kbd>R</kbd> P2 wins</span>
             <span><kbd>Del</kbd><kbd>Del</kbd> Delete last</span>
           </div>
-
-          {/* Scoreboard customizer trigger */}
-          <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>
-            ✦ Customize scoreboard
-          </button>
-
-          {/* Capture frame */}
-          <button
-            className="te__capture-btn"
-            onClick={captureFrame}
-            title="Download current frame with scoreboard as JPEG"
-          >
-            📷 Capture frame
-          </button>
-
-          {/* Export */}
-          <VideoExporter
-            videoFile={videoFile}
-            points={points}
-            fileName={fileName}
-            names={[p1Name, p2Name]}
-            serving={serving}
-            scoreboardTheme={scoreboardTheme}
-          />
 
           {/* Point timeline */}
           <PointTimeline
@@ -1095,7 +998,170 @@ export default function TennisEditor() {
             </div>
           )}
 
-          )}
+          </div>{/* end te__content */}
+
+          {/* ── Persistent settings sidebar ──────── */}
+          <div className={`te__sidebar${sidebarOpen ? '' : ' te__sidebar--collapsed'}`}>
+            <div className="te__sidebar-body">
+
+              {/* Players section */}
+              <div className="te__sb-section">
+                <button
+                  className="te__sb-section-hdr"
+                  onClick={() => sidebarOpen ? setPlayerSetupOpen(o => !o) : setSidebarOpen(true)}
+                  title="Players"
+                >
+                  <span className="te__sb-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                  </span>
+                  {sidebarOpen && <span className="te__sb-label">Players</span>}
+                  {sidebarOpen && <span className="te__sb-chevron">{playerSetupOpen
+                    ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>}</span>}
+                </button>
+                {sidebarOpen && playerSetupOpen && (
+                  <div className="te__sb-section-body">
+                    <div className="te__names te__names--panel">
+                      <div className="te__name-field te__name-field--p1">
+                        <input id="p1-name-sb" type="text" value={p1Name}
+                          onChange={e => setP1Name(e.target.value.slice(0, 20))}
+                          maxLength={20} placeholder=" " />
+                        <label htmlFor="p1-name-sb">Player/Team 1</label>
+                      </div>
+                      <div className="te__name-field te__name-field--p2">
+                        <input id="p2-name-sb" type="text" value={p2Name}
+                          onChange={e => setP2Name(e.target.value.slice(0, 20))}
+                          maxLength={20} placeholder=" " />
+                        <label htmlFor="p2-name-sb">Player/Team 2</label>
+                      </div>
+                    </div>
+                    <div className="te__serve-picker">
+                      <span className="te__serve-picker-label">Serves first</span>
+                      <button className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
+                        onClick={() => setInitialServer(0)}>🎾 {p1Name}</button>
+                      <button className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
+                        onClick={() => setInitialServer(1)}>🎾 {p2Name}</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Match Settings section */}
+              <div className="te__sb-section">
+                <button
+                  className="te__sb-section-hdr"
+                  onClick={() => sidebarOpen ? setMatchSettingsOpen(o => !o) : setSidebarOpen(true)}
+                  title="Match Settings"
+                >
+                  <span className="te__sb-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                  </span>
+                  {sidebarOpen && <span className="te__sb-label">Match Settings</span>}
+                  {sidebarOpen && <span className="te__sb-chevron">{matchSettingsOpen
+                    ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>}</span>}
+                </button>
+                {sidebarOpen && matchSettingsOpen && (
+                  <div className="te__sb-section-body">
+                    <div className="te__setting-row">
+                      <span className="te__setting-row-label">3rd Set</span>
+                      <div className="te__setting-pills">
+                        <button className={`te__setting-pill${!matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: false }))}>Full Set</button>
+                        <button className={`te__setting-pill${matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: true }))}>Match Tiebreak</button>
+                      </div>
+                    </div>
+                    <div className="te__setting-row">
+                      <span className="te__setting-row-label">Scoring</span>
+                      <div className="te__setting-pills">
+                        <button className={`te__setting-pill${!matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, noAds: false }))}>Ads</button>
+                        <button className={`te__setting-pill${matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
+                          onClick={() => setMatchConfig(c => ({ ...c, noAds: true }))}>No-Ads</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Scoreboard section */}
+              <div className="te__sb-section">
+                <button
+                  className="te__sb-section-hdr"
+                  onClick={() => sidebarOpen ? setScoreboardSectionOpen(o => !o) : setSidebarOpen(true)}
+                  title="Scoreboard"
+                >
+                  <span className="te__sb-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+                  </span>
+                  {sidebarOpen && <span className="te__sb-label">Scoreboard</span>}
+                  {sidebarOpen && <span className="te__sb-chevron">{scoreboardSectionOpen
+                    ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>}</span>}
+                </button>
+                {sidebarOpen && scoreboardSectionOpen && (
+                  <div className="te__sb-section-body">
+                    <ScorePreview
+                      score={displayState.score}
+                      names={[p1Name, p2Name]}
+                      serving={displayState.serving}
+                      theme={scoreboardTheme}
+                      scale={0.78}
+                    />
+                    <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>✦ Customize scoreboard</button>
+                    <button className="te__capture-btn" onClick={captureFrame} title="Download current frame with scoreboard as JPEG">📷 Capture frame</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Export section */}
+              <div className="te__sb-section">
+                <button
+                  className="te__sb-section-hdr"
+                  onClick={() => sidebarOpen ? null : setSidebarOpen(true)}
+                  title="Export"
+                  style={{ cursor: sidebarOpen ? 'default' : 'pointer' }}
+                >
+                  <span className="te__sb-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15V3"/><polyline points="7 10 12 15 17 10"/><path d="M3 17v1a3 3 0 003 3h12a3 3 0 003-3v-1"/></svg>
+                  </span>
+                  {sidebarOpen && <span className="te__sb-label">Export</span>}
+                </button>
+                {sidebarOpen && (
+                  <div className="te__sb-section-body">
+                    <VideoExporter
+                      videoFile={videoFile}
+                      points={points}
+                      fileName={fileName}
+                      names={[p1Name, p2Name]}
+                      serving={serving}
+                      scoreboardTheme={scoreboardTheme}
+                    />
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Collapse toggle — bottom of sidebar like Mailchimp */}
+            <button
+              className="te__sidebar-toggle"
+              onClick={() => setSidebarOpen(o => !o)}
+              title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            >
+              {/* sidebar-panel icon — left panel fills when open, flips when collapsed */}
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="1.5" y="1.5" width="15" height="15" rx="2.5"/>
+                <line x1="6.5" y1="1.5" x2="6.5" y2="16.5"/>
+                {sidebarOpen
+                  ? <rect x="1.5" y="1.5" width="5" height="15" rx="2.5" fill="currentColor" fillOpacity="0.35" stroke="none"/>
+                  : <rect x="11.5" y="1.5" width="5" height="15" rx="2.5" fill="currentColor" fillOpacity="0.35" stroke="none"/>}
+              </svg>
+            </button>
+          </div>
+
+          </div>{/* end te__body */}
 
           {/* ── Scoreboard customizer modal ──────── */}
           {showCustomizer && (
