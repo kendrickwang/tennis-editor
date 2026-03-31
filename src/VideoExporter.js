@@ -5,11 +5,12 @@ import { drawScoreboardToCanvas, canvasToUint8Array } from './scoreboardCanvas';
 import './VideoExporter.css';
 
 // Maximum parallel FFmpeg workers. Each worker needs ~50 MB (32 MB WASM heap +
-// worker overhead), so 3 keeps peak overhead around 150 MB.
-const PARALLEL = 3;
+// worker overhead). 6 workers keeps peak overhead ~300 MB — fine on modern machines.
+const PARALLEL = 6;
 
-// Returns an FFmpeg vf/filter fragment that scales down to at most `res` lines,
-// maintaining aspect ratio and rounding width to an even number.
+// Returns a scale filter fragment that downscales to at most `res` lines.
+// Applied BEFORE overlay so the source is decoded at output resolution, not
+// at full 4K — dramatically reduces per-frame work on high-res source videos.
 // Returns null for 'source' (no scaling needed).
 function scaleFilter(res) {
   const h = { '1080': 1080, '720': 720, '480': 480 }[res];
@@ -101,11 +102,11 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
             const pngData = await canvasToUint8Array(canvas);
             await ff.writeFile('overlay.png', pngData);
 
-            // The scoreboard canvas is rendered at 2× (SCALE=2) for crispness.
-            // Scale it back to 1× (CSS pixel size) before burning in, so the
-            // overlay appears at the same proportion as the web app overlay.
+            // Filter order: scale source DOWN first (so decode happens at output
+            // resolution, not full 4K), then composite the 1× scoreboard on top.
+            // This is the biggest speed lever for high-res source videos.
             const fc = sf
-              ? `[1:v]scale=iw/2:ih/2[sb];[0:v][sb]overlay=14:14[ov];[ov]${sf}[vout]`
+              ? `[0:v]${sf}[scaled];[1:v]scale=iw/2:ih/2[sb];[scaled][sb]overlay=14:14[vout]`
               : `[1:v]scale=iw/2:ih/2[sb];[0:v][sb]overlay=14:14[vout]`;
 
             await ff.exec([
@@ -117,6 +118,7 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
               '-map', '[vout]',
               '-map', '0:a?',
               '-c:v', 'libx264',
+              '-c:a', 'copy',
               '-preset', 'ultrafast',
               '-crf', '23',
               '-avoid_negative_ts', 'make_zero',
