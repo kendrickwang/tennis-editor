@@ -207,6 +207,9 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
         }
 
         await ff.unmount('/input');
+        // Terminate the worker immediately — releasing its ~50 MB WASM heap.
+        // With 6 workers this frees ~300 MB before the concat phase starts.
+        try { ff.terminate(); } catch (_) {}
       }));
 
       // ── 3. Concatenate all segments ──────────────────────────────────────
@@ -221,6 +224,10 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
 
       for (let i = 0; i < segDataByIdx.length; i++) {
         await concatFF.writeFile(`seg${i}.mp4`, segDataByIdx[i]);
+        // Null out the JS reference immediately after writing to the WASM FS
+        // so the GC can reclaim it. Without this, all 110 clips (~400 MB) sit
+        // in both JS memory and the WASM heap simultaneously.
+        segDataByIdx[i] = null;
       }
       const manifest = segDataByIdx.map((_, i) => `file 'seg${i}.mp4'`).join('\n');
       await concatFF.writeFile('list.txt', manifest);
