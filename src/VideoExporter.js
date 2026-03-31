@@ -172,12 +172,14 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
               '-map', '[vout]',
               '-map', '0:a?',
               '-c:v', 'libx264',
-              // Re-encode audio (NOT copy) so timestamps reset with the video
-              // stream. -c:a copy + -reset_timestamps causes audio/video drift.
               '-c:a', 'aac', '-b:a', '128k',
+              // aresample=async=1 compensates for AAC encoder priming delay
+              // (~21 ms) that would otherwise cause audio to start late vs video.
+              '-af', 'aresample=async=1',
               '-preset', 'ultrafast',
               '-crf', '23',
-              '-avoid_negative_ts', 'make_zero',
+              // reset_timestamps alone is sufficient; avoid_negative_ts conflicts
+              // with it and causes micro-discontinuities between clips.
               '-reset_timestamps', '1',
               'seg.mp4',
             ]);
@@ -190,7 +192,6 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
               '-to', pt.endTime.toFixed(3),
               '-i', '/input/video.mp4',
               '-c', 'copy',
-              '-avoid_negative_ts', 'make_zero',
               '-reset_timestamps', '1',
               'seg.mp4',
             ]);
@@ -238,6 +239,9 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
         '-safe', '0',
         '-i', 'list.txt',
         '-c', 'copy',
+        // Regenerate presentation timestamps so micro-discontinuities between
+        // clips (from input seeking) don't cause skipped frames in playback.
+        '-fflags', '+genpts',
         'output.mp4',
       ]);
 
