@@ -84,6 +84,16 @@ export default function TennisEditor() {
   const matchConfigRef = useRef({ noAds: false, matchTiebreak: false });
   const pendingDeleteRef = useRef(false);
   const deleteTimerRef = useRef(null);
+  // Undo stack — each entry is { points, pendingStart } snapshot taken before
+  // a destructive action. Ctrl+Z pops the top and restores.
+  const undoStackRef = useRef([]);
+
+  function pushUndo() {
+    undoStackRef.current = [
+      ...undoStackRef.current,
+      { points: pointsRef.current, pendingStart: pendingStartRef.current },
+    ].slice(-50); // cap at 50 steps
+  }
 
   // Refs so keyboard handler never has stale closures
   const scoreRef = useRef(INITIAL_SCORE);
@@ -259,6 +269,26 @@ export default function TennisEditor() {
       }
     }
 
+    // Ctrl+Z — undo last point action
+    if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      const stack = undoStackRef.current;
+      if (stack.length === 0) return;
+      const prev = stack[stack.length - 1];
+      undoStackRef.current = stack.slice(0, -1);
+      const { points: restored, finalScore } = recomputeScores(prev.points, initialServerRef.current, matchConfigRef.current);
+      setPoints(restored);
+      setScore(finalScore);
+      scoreRef.current = finalScore;
+      setPendingStart(prev.pendingStart);
+      pendingStartRef.current = prev.pendingStart;
+      setStatus({ text: `Undone — ${restored.length} point${restored.length !== 1 ? 's' : ''}`, kind: 'info' });
+      clearTimeout(glowTimerRef.current);
+      setVideoGlow('info');
+      glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1200);
+      return;
+    }
+
     // Cancel pending delete if user presses anything other than Delete/Backspace
     if (pendingDeleteRef.current && e.code !== 'Delete' && e.code !== 'Backspace') {
       setPendingDelete(false);
@@ -291,6 +321,7 @@ export default function TennisEditor() {
         // Second press — confirm delete
         const lastPt = pts[pts.length - 1];
         if (lastPt) {
+          pushUndo();
           const { points: recomputed, finalScore } = recomputeScores(
             pts.filter(p => p.id !== lastPt.id),
             initialServerRef.current,
@@ -337,6 +368,7 @@ export default function TennisEditor() {
 
     if (e.code === 'KeyS') {
       const t = video.currentTime;
+      pushUndo(); // save state so S can be undone (cancels pending start)
       pendingStartRef.current = t;
       setPendingStart(t);
       setStatus({ text: `Start: ${fmtTime(t)} — now press E (P1 wins) or R (P2 wins)`, kind: 'info' });
@@ -368,6 +400,7 @@ export default function TennisEditor() {
     if (endTime < startTime) [startTime, endTime] = [endTime, startTime];
 
     const winner = e.code === 'KeyE' ? 1 : 2;
+    pushUndo(); // save state before adding point
     const newPt = { id: Date.now(), startTime, endTime, winner };
     const { points: recomputed, finalScore } = recomputeScores([...pointsRef.current, newPt], initialServerRef.current, matchConfigRef.current);
 
@@ -403,6 +436,7 @@ export default function TennisEditor() {
   }
 
   function removePoint(id) {
+    pushUndo();
     const { points: recomputed, finalScore } = recomputeScores(points.filter(p => p.id !== id), initialServer, matchConfigRef.current);
     setPoints(recomputed);
     setScore(finalScore);
@@ -781,6 +815,7 @@ export default function TennisEditor() {
             <span><kbd>E</kbd> P1 wins</span>
             <span><kbd>R</kbd> P2 wins</span>
             <span><kbd>Del</kbd><kbd>Del</kbd> Delete last</span>
+            <span><kbd>⌘Z</kbd> Undo</span>
           </div>
 
           {/* Point timeline */}
