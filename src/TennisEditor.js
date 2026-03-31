@@ -1137,13 +1137,6 @@ export default function TennisEditor() {
                 </button>
                 {sidebarOpen && scoreboardSectionOpen && (
                   <div className="te__sb-section-body">
-                    <ScorePreview
-                      score={displayState.score}
-                      names={[p1Name, p2Name]}
-                      serving={displayState.serving}
-                      theme={scoreboardTheme}
-                      scale={0.78}
-                    />
                     <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>✦ Customize scoreboard</button>
                     <button className="te__capture-btn" onClick={captureFrame} title="Download current frame with scoreboard as JPEG">📷 Capture frame</button>
                   </div>
