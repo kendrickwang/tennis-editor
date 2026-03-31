@@ -9,12 +9,60 @@ import './VideoExporter.css';
 const PARALLEL = 6;
 
 // Returns a scale filter fragment that downscales to at most `res` lines.
-// Applied BEFORE overlay so the source is decoded at output resolution, not
-// at full 4K — dramatically reduces per-frame work on high-res source videos.
 // Returns null for 'source' (no scaling needed).
 function scaleFilter(res) {
   const h = { '1080': 1080, '720': 720, '480': 480 }[res];
   return h ? `scale=-2:min(${h}\\,ih)` : null;
+}
+
+// Compute the output width in pixels for a given resolution setting and
+// source video dimensions (used to size the scoreboard proportionally).
+// For known resolutions, width = height * (16/9). For 'source', use
+// the probed source width directly.
+export function outputWidthForRes(res, sourceWidth, sourceHeight) {
+  const h = { '1080': 1080, '720': 720, '480': 480 }[res];
+  if (!h) return sourceWidth; // 'source'
+  // If source is narrower than target, don't upscale
+  if (sourceHeight <= h) return sourceWidth;
+  return Math.round(sourceWidth * (h / sourceHeight));
+}
+
+// Build the FFmpeg filter_complex string for scoreboard overlay.
+// Exported for unit testing — this is the contract that must never break.
+//
+// Rules:
+//   1. Video is scaled to output resolution BEFORE overlay (saves decode work).
+//   2. Scoreboard canvas (SCALE=2, ~680px wide) is scaled to match the
+//      proportion it occupies in the web app overlay (~26.6% of 1280px = 340px).
+//      For other output widths: sbPx = round(outputWidth × 340 / 1280), even.
+//   3. Audio must be re-encoded (not copied) with reset timestamps to stay in
+//      sync with the re-encoded video stream.
+export function buildFilterComplex(sf, sbPx) {
+  // Round scoreboard px to nearest even number (libx264 requirement)
+  const sb = Math.round(sbPx / 2) * 2;
+  const sbFilter = `[1:v]scale=${sb}:-2[sb]`;
+  if (sf) {
+    // Scale video down first, then composite scoreboard
+    return `[0:v]${sf}[scaled];${sbFilter};[scaled][sb]overlay=14:14[vout]`;
+  }
+  // Source resolution — no video scaling
+  return `${sbFilter};[0:v][sb]overlay=14:14[vout]`;
+}
+
+// Probe the natural dimensions of a video File using the browser's video
+// element — free, no FFmpeg required.
+export function probeVideoDimensions(videoFile) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      const { videoWidth, videoHeight } = video;
+      URL.revokeObjectURL(video.src);
+      resolve({ width: videoWidth, height: videoHeight });
+    };
+    video.onerror = reject;
+    video.src = URL.createObjectURL(videoFile);
+  });
 }
 
 export default function VideoExporter({ videoFile, points, fileName, names = ['P1', 'P2'], serving = 0, scoreboardTheme }) {
@@ -85,6 +133,17 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
 
       const sf = showScoreboard ? scaleFilter(outputRes) : null;
 
+      // Probe source dimensions so we can size the scoreboard proportionally
+      // to the output frame, matching the overlay proportion in the web app.
+      let sbPx = 340; // default: 26.6% of 1280px (720p)
+      if (showScoreboard) {
+        try {
+          const { width: srcW, height: srcH } = await probeVideoDimensions(videoFile);
+          const outW = outputWidthForRes(outputRes, srcW, srcH);
+          sbPx = Math.round(outW * 340 / 1280);
+        } catch (_) { /* fallback to 340 */ }
+      }
+
       await Promise.all(chunks.map(async (chunk) => {
         const ff = new FFmpeg();
         await ff.load({ coreURL, wasmURL });
@@ -102,12 +161,7 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
             const pngData = await canvasToUint8Array(canvas);
             await ff.writeFile('overlay.png', pngData);
 
-            // Filter order: scale source DOWN first (so decode happens at output
-            // resolution, not full 4K), then composite the 1× scoreboard on top.
-            // This is the biggest speed lever for high-res source videos.
-            const fc = sf
-              ? `[0:v]${sf}[scaled];[1:v]scale=iw/2:ih/2[sb];[scaled][sb]overlay=14:14[vout]`
-              : `[1:v]scale=iw/2:ih/2[sb];[0:v][sb]overlay=14:14[vout]`;
+            const fc = buildFilterComplex(sf, sbPx);
 
             await ff.exec([
               '-ss', pt.startTime.toFixed(3),
@@ -118,7 +172,9 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
               '-map', '[vout]',
               '-map', '0:a?',
               '-c:v', 'libx264',
-              '-c:a', 'copy',
+              // Re-encode audio (NOT copy) so timestamps reset with the video
+              // stream. -c:a copy + -reset_timestamps causes audio/video drift.
+              '-c:a', 'aac', '-b:a', '128k',
               '-preset', 'ultrafast',
               '-crf', '23',
               '-avoid_negative_ts', 'make_zero',
