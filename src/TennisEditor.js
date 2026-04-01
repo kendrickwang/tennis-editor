@@ -76,6 +76,8 @@ export default function TennisEditor() {
   const [sampleLoading, setSampleLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [scoreboardSectionOpen, setScoreboardSectionOpen] = useState(true);
+  // ID of a point that conflicts with the current recording action — highlighted in timeline
+  const [conflictPointId, setConflictPointId] = useState(null);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -93,6 +95,23 @@ export default function TennisEditor() {
       ...undoStackRef.current,
       { points: pointsRef.current, pendingStart: pendingStartRef.current },
     ].slice(-50); // cap at 50 steps
+  }
+
+  // Returns the first point whose [startTime, endTime] range contains `t`,
+  // or overlaps the range [a, b]. Used for overlap detection.
+  function findOverlap(a, b = null) {
+    const pts = pointsRef.current;
+    if (b === null) {
+      // Point-in-range check (S press)
+      return pts.find(p => a > p.startTime && a < p.endTime) ?? null;
+    }
+    // Range-overlap check (E/R press) — two ranges overlap if one starts before the other ends
+    return pts.find(p => a < p.endTime && b > p.startTime) ?? null;
+  }
+
+  function flashConflict(id) {
+    setConflictPointId(id);
+    setTimeout(() => setConflictPointId(null), 2000);
   }
 
   // Refs so keyboard handler never has stale closures
@@ -368,6 +387,19 @@ export default function TennisEditor() {
 
     if (e.code === 'KeyS') {
       const t = video.currentTime;
+      // Soft warning: S pressed inside an existing point's range
+      const overlap = findOverlap(t);
+      if (overlap) {
+        flashConflict(overlap.id);
+        setStatus({
+          text: `⚠ Inside point #${pointsRef.current.indexOf(overlap) + 1} (${fmtTime(overlap.startTime)}–${fmtTime(overlap.endTime)}) — seek past ${fmtTime(overlap.endTime)} first`,
+          kind: 'warn',
+        });
+        clearTimeout(glowTimerRef.current);
+        setVideoGlow('warn');
+        glowTimerRef.current = setTimeout(() => setVideoGlow(null), 2000);
+        return; // block — don't allow start inside existing point
+      }
       pushUndo(); // save state so S can be undone (cancels pending start)
       pendingStartRef.current = t;
       setPendingStart(t);
@@ -398,6 +430,24 @@ export default function TennisEditor() {
     }
     // Allow marking if user seeked backwards (swap times)
     if (endTime < startTime) [startTime, endTime] = [endTime, startTime];
+
+    // Hard block: new range overlaps an existing point
+    const rangeOverlap = findOverlap(startTime, endTime);
+    if (rangeOverlap) {
+      flashConflict(rangeOverlap.id);
+      const idx = pointsRef.current.indexOf(rangeOverlap) + 1;
+      setStatus({
+        text: `⚠ Overlaps point #${idx} (${fmtTime(rangeOverlap.startTime)}–${fmtTime(rangeOverlap.endTime)}) — point not saved`,
+        kind: 'warn',
+      });
+      clearTimeout(glowTimerRef.current);
+      setVideoGlow('warn');
+      glowTimerRef.current = setTimeout(() => setVideoGlow(null), 2000);
+      // Clear pending start so user must re-press S
+      pendingStartRef.current = null;
+      setPendingStart(null);
+      return;
+    }
 
     const winner = e.code === 'KeyE' ? 1 : 2;
     pushUndo(); // save state before adding point
@@ -826,6 +876,7 @@ export default function TennisEditor() {
             pendingStart={pendingStart}
             onSeek={seekTo}
             names={[p1Name, p2Name]}
+            conflictPointId={conflictPointId}
           />
 
           {/* Points list */}
