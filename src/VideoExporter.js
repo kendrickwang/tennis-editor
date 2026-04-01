@@ -5,15 +5,64 @@ import { drawScoreboardToCanvas, canvasToUint8Array } from './scoreboardCanvas';
 import './VideoExporter.css';
 
 // Maximum parallel FFmpeg workers. Each worker needs ~50 MB (32 MB WASM heap +
-// worker overhead), so 3 keeps peak overhead around 150 MB.
-const PARALLEL = 3;
+// worker overhead). 6 workers keeps peak overhead ~300 MB — fine on modern machines.
+const PARALLEL = 6;
 
-// Returns an FFmpeg vf/filter fragment that scales down to at most `res` lines,
-// maintaining aspect ratio and rounding width to an even number.
+// Returns a scale filter fragment that downscales to at most `res` lines.
 // Returns null for 'source' (no scaling needed).
 function scaleFilter(res) {
   const h = { '1080': 1080, '720': 720, '480': 480 }[res];
   return h ? `scale=-2:min(${h}\\,ih)` : null;
+}
+
+// Compute the output width in pixels for a given resolution setting and
+// source video dimensions (used to size the scoreboard proportionally).
+// For known resolutions, width = height * (16/9). For 'source', use
+// the probed source width directly.
+export function outputWidthForRes(res, sourceWidth, sourceHeight) {
+  const h = { '1080': 1080, '720': 720, '480': 480 }[res];
+  if (!h) return sourceWidth; // 'source'
+  // If source is narrower than target, don't upscale
+  if (sourceHeight <= h) return sourceWidth;
+  return Math.round(sourceWidth * (h / sourceHeight));
+}
+
+// Build the FFmpeg filter_complex string for scoreboard overlay.
+// Exported for unit testing — this is the contract that must never break.
+//
+// Rules:
+//   1. Video is scaled to output resolution BEFORE overlay (saves decode work).
+//   2. Scoreboard canvas (SCALE=2, ~680px wide) is scaled to match the
+//      proportion it occupies in the web app overlay (~26.6% of 1280px = 340px).
+//      For other output widths: sbPx = round(outputWidth × 340 / 1280), even.
+//   3. Audio must be re-encoded (not copied) with reset timestamps to stay in
+//      sync with the re-encoded video stream.
+export function buildFilterComplex(sf, sbPx) {
+  // Round scoreboard px to nearest even number (libx264 requirement)
+  const sb = Math.round(sbPx / 2) * 2;
+  const sbFilter = `[1:v]scale=${sb}:-2[sb]`;
+  if (sf) {
+    // Scale video down first, then composite scoreboard
+    return `[0:v]${sf}[scaled];${sbFilter};[scaled][sb]overlay=14:14[vout]`;
+  }
+  // Source resolution — no video scaling
+  return `${sbFilter};[0:v][sb]overlay=14:14[vout]`;
+}
+
+// Probe the natural dimensions of a video File using the browser's video
+// element — free, no FFmpeg required.
+export function probeVideoDimensions(videoFile) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      const { videoWidth, videoHeight } = video;
+      URL.revokeObjectURL(video.src);
+      resolve({ width: videoWidth, height: videoHeight });
+    };
+    video.onerror = reject;
+    video.src = URL.createObjectURL(videoFile);
+  });
 }
 
 export default function VideoExporter({ videoFile, points, fileName, names = ['P1', 'P2'], serving = 0, scoreboardTheme }) {
@@ -84,6 +133,17 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
 
       const sf = showScoreboard ? scaleFilter(outputRes) : null;
 
+      // Probe source dimensions so we can size the scoreboard proportionally
+      // to the output frame, matching the overlay proportion in the web app.
+      let sbPx = 340; // default: 26.6% of 1280px (720p)
+      if (showScoreboard) {
+        try {
+          const { width: srcW, height: srcH } = await probeVideoDimensions(videoFile);
+          const outW = outputWidthForRes(outputRes, srcW, srcH);
+          sbPx = Math.round(outW * 340 / 1280);
+        } catch (_) { /* fallback to 340 */ }
+      }
+
       await Promise.all(chunks.map(async (chunk) => {
         const ff = new FFmpeg();
         await ff.load({ coreURL, wasmURL });
@@ -101,12 +161,7 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
             const pngData = await canvasToUint8Array(canvas);
             await ff.writeFile('overlay.png', pngData);
 
-            // The scoreboard canvas is rendered at 2× (SCALE=2) for crispness.
-            // Scale it back to 1× (CSS pixel size) before burning in, so the
-            // overlay appears at the same proportion as the web app overlay.
-            const fc = sf
-              ? `[1:v]scale=iw/2:ih/2[sb];[0:v][sb]overlay=14:14[ov];[ov]${sf}[vout]`
-              : `[1:v]scale=iw/2:ih/2[sb];[0:v][sb]overlay=14:14[vout]`;
+            const fc = buildFilterComplex(sf, sbPx);
 
             await ff.exec([
               '-ss', pt.startTime.toFixed(3),
@@ -117,9 +172,14 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
               '-map', '[vout]',
               '-map', '0:a?',
               '-c:v', 'libx264',
+              '-c:a', 'aac', '-b:a', '128k',
+              // aresample=async=1 compensates for AAC encoder priming delay
+              // (~21 ms) that would otherwise cause audio to start late vs video.
+              '-af', 'aresample=async=1',
               '-preset', 'ultrafast',
               '-crf', '23',
-              '-avoid_negative_ts', 'make_zero',
+              // reset_timestamps alone is sufficient; avoid_negative_ts conflicts
+              // with it and causes micro-discontinuities between clips.
               '-reset_timestamps', '1',
               'seg.mp4',
             ]);
@@ -132,7 +192,6 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
               '-to', pt.endTime.toFixed(3),
               '-i', '/input/video.mp4',
               '-c', 'copy',
-              '-avoid_negative_ts', 'make_zero',
               '-reset_timestamps', '1',
               'seg.mp4',
             ]);
@@ -149,6 +208,9 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
         }
 
         await ff.unmount('/input');
+        // Terminate the worker immediately — releasing its ~50 MB WASM heap.
+        // With 6 workers this frees ~300 MB before the concat phase starts.
+        try { ff.terminate(); } catch (_) {}
       }));
 
       // ── 3. Concatenate all segments ──────────────────────────────────────
@@ -163,6 +225,10 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
 
       for (let i = 0; i < segDataByIdx.length; i++) {
         await concatFF.writeFile(`seg${i}.mp4`, segDataByIdx[i]);
+        // Null out the JS reference immediately after writing to the WASM FS
+        // so the GC can reclaim it. Without this, all 110 clips (~400 MB) sit
+        // in both JS memory and the WASM heap simultaneously.
+        segDataByIdx[i] = null;
       }
       const manifest = segDataByIdx.map((_, i) => `file 'seg${i}.mp4'`).join('\n');
       await concatFF.writeFile('list.txt', manifest);
@@ -173,6 +239,9 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
         '-safe', '0',
         '-i', 'list.txt',
         '-c', 'copy',
+        // Regenerate presentation timestamps so micro-discontinuities between
+        // clips (from input seeking) don't cause skipped frames in playback.
+        '-fflags', '+genpts',
         'output.mp4',
       ]);
 

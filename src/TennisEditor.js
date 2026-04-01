@@ -76,6 +76,8 @@ export default function TennisEditor() {
   const [sampleLoading, setSampleLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [scoreboardSectionOpen, setScoreboardSectionOpen] = useState(true);
+  // ID of a point that conflicts with the current recording action — highlighted in timeline
+  const [conflictPointId, setConflictPointId] = useState(null);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -84,6 +86,33 @@ export default function TennisEditor() {
   const matchConfigRef = useRef({ noAds: false, matchTiebreak: false });
   const pendingDeleteRef = useRef(false);
   const deleteTimerRef = useRef(null);
+  // Undo stack — each entry is { points, pendingStart } snapshot taken before
+  // a destructive action. Ctrl+Z pops the top and restores.
+  const undoStackRef = useRef([]);
+
+  function pushUndo() {
+    undoStackRef.current = [
+      ...undoStackRef.current,
+      { points: pointsRef.current, pendingStart: pendingStartRef.current },
+    ].slice(-50); // cap at 50 steps
+  }
+
+  // Returns the first point whose [startTime, endTime] range contains `t`,
+  // or overlaps the range [a, b]. Used for overlap detection.
+  function findOverlap(a, b = null) {
+    const pts = pointsRef.current;
+    if (b === null) {
+      // Point-in-range check (S press)
+      return pts.find(p => a > p.startTime && a < p.endTime) ?? null;
+    }
+    // Range-overlap check (E/R press) — two ranges overlap if one starts before the other ends
+    return pts.find(p => a < p.endTime && b > p.startTime) ?? null;
+  }
+
+  function flashConflict(id) {
+    setConflictPointId(id);
+    setTimeout(() => setConflictPointId(null), 2000);
+  }
 
   // Refs so keyboard handler never has stale closures
   const scoreRef = useRef(INITIAL_SCORE);
@@ -259,6 +288,26 @@ export default function TennisEditor() {
       }
     }
 
+    // Ctrl+Z — undo last point action
+    if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      const stack = undoStackRef.current;
+      if (stack.length === 0) return;
+      const prev = stack[stack.length - 1];
+      undoStackRef.current = stack.slice(0, -1);
+      const { points: restored, finalScore } = recomputeScores(prev.points, initialServerRef.current, matchConfigRef.current);
+      setPoints(restored);
+      setScore(finalScore);
+      scoreRef.current = finalScore;
+      setPendingStart(prev.pendingStart);
+      pendingStartRef.current = prev.pendingStart;
+      setStatus({ text: `Undone — ${restored.length} point${restored.length !== 1 ? 's' : ''}`, kind: 'info' });
+      clearTimeout(glowTimerRef.current);
+      setVideoGlow('info');
+      glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1200);
+      return;
+    }
+
     // Cancel pending delete if user presses anything other than Delete/Backspace
     if (pendingDeleteRef.current && e.code !== 'Delete' && e.code !== 'Backspace') {
       setPendingDelete(false);
@@ -291,6 +340,7 @@ export default function TennisEditor() {
         // Second press — confirm delete
         const lastPt = pts[pts.length - 1];
         if (lastPt) {
+          pushUndo();
           const { points: recomputed, finalScore } = recomputeScores(
             pts.filter(p => p.id !== lastPt.id),
             initialServerRef.current,
@@ -337,6 +387,20 @@ export default function TennisEditor() {
 
     if (e.code === 'KeyS') {
       const t = video.currentTime;
+      // Soft warning: S pressed inside an existing point's range
+      const overlap = findOverlap(t);
+      if (overlap) {
+        flashConflict(overlap.id);
+        setStatus({
+          text: `⚠ Inside point #${pointsRef.current.indexOf(overlap) + 1} (${fmtTime(overlap.startTime)}–${fmtTime(overlap.endTime)}) — seek past ${fmtTime(overlap.endTime)} first`,
+          kind: 'warn',
+        });
+        clearTimeout(glowTimerRef.current);
+        setVideoGlow('warn');
+        glowTimerRef.current = setTimeout(() => setVideoGlow(null), 2000);
+        return; // block — don't allow start inside existing point
+      }
+      pushUndo(); // save state so S can be undone (cancels pending start)
       pendingStartRef.current = t;
       setPendingStart(t);
       setStatus({ text: `Start: ${fmtTime(t)} — now press E (P1 wins) or R (P2 wins)`, kind: 'info' });
@@ -367,7 +431,26 @@ export default function TennisEditor() {
     // Allow marking if user seeked backwards (swap times)
     if (endTime < startTime) [startTime, endTime] = [endTime, startTime];
 
+    // Hard block: new range overlaps an existing point
+    const rangeOverlap = findOverlap(startTime, endTime);
+    if (rangeOverlap) {
+      flashConflict(rangeOverlap.id);
+      const idx = pointsRef.current.indexOf(rangeOverlap) + 1;
+      setStatus({
+        text: `⚠ Overlaps point #${idx} (${fmtTime(rangeOverlap.startTime)}–${fmtTime(rangeOverlap.endTime)}) — point not saved`,
+        kind: 'warn',
+      });
+      clearTimeout(glowTimerRef.current);
+      setVideoGlow('warn');
+      glowTimerRef.current = setTimeout(() => setVideoGlow(null), 2000);
+      // Clear pending start so user must re-press S
+      pendingStartRef.current = null;
+      setPendingStart(null);
+      return;
+    }
+
     const winner = e.code === 'KeyE' ? 1 : 2;
+    pushUndo(); // save state before adding point
     const newPt = { id: Date.now(), startTime, endTime, winner };
     const { points: recomputed, finalScore } = recomputeScores([...pointsRef.current, newPt], initialServerRef.current, matchConfigRef.current);
 
@@ -403,6 +486,7 @@ export default function TennisEditor() {
   }
 
   function removePoint(id) {
+    pushUndo();
     const { points: recomputed, finalScore } = recomputeScores(points.filter(p => p.id !== id), initialServer, matchConfigRef.current);
     setPoints(recomputed);
     setScore(finalScore);
@@ -781,6 +865,7 @@ export default function TennisEditor() {
             <span><kbd>E</kbd> P1 wins</span>
             <span><kbd>R</kbd> P2 wins</span>
             <span><kbd>Del</kbd><kbd>Del</kbd> Delete last</span>
+            <span><kbd>⌘Z</kbd> Undo</span>
           </div>
 
           {/* Point timeline */}
@@ -791,6 +876,7 @@ export default function TennisEditor() {
             pendingStart={pendingStart}
             onSeek={seekTo}
             names={[p1Name, p2Name]}
+            conflictPointId={conflictPointId}
           />
 
           {/* Points list */}
@@ -1102,13 +1188,6 @@ export default function TennisEditor() {
                 </button>
                 {sidebarOpen && scoreboardSectionOpen && (
                   <div className="te__sb-section-body">
-                    <ScorePreview
-                      score={displayState.score}
-                      names={[p1Name, p2Name]}
-                      serving={displayState.serving}
-                      theme={scoreboardTheme}
-                      scale={0.78}
-                    />
                     <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>✦ Customize scoreboard</button>
                     <button className="te__capture-btn" onClick={captureFrame} title="Download current frame with scoreboard as JPEG">📷 Capture frame</button>
                   </div>
@@ -1150,14 +1229,14 @@ export default function TennisEditor() {
               onClick={() => setSidebarOpen(o => !o)}
               title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
-              {/* sidebar-panel icon — left panel fills when open, flips when collapsed */}
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="1.5" y="1.5" width="15" height="15" rx="2.5"/>
                 <line x1="6.5" y1="1.5" x2="6.5" y2="16.5"/>
                 {sidebarOpen
                   ? <rect x="1.5" y="1.5" width="5" height="15" rx="2.5" fill="currentColor" fillOpacity="0.35" stroke="none"/>
                   : <rect x="11.5" y="1.5" width="5" height="15" rx="2.5" fill="currentColor" fillOpacity="0.35" stroke="none"/>}
               </svg>
+              {sidebarOpen && <span>Minimize</span>}
             </button>
           </div>
 

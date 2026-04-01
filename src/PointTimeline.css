@@ -148,6 +148,16 @@
   background: var(--p2);
   box-shadow: 0 1px 4px rgba(234, 88, 12, 0.25);
 }
+.ptl__segment--conflict {
+  background: var(--error) !important;
+  box-shadow: 0 0 0 2px var(--error), 0 0 12px rgba(220, 38, 38, 0.5) !important;
+  animation: ptl-conflict-pulse 0.35s ease-in-out 4;
+  z-index: 3;
+}
+@keyframes ptl-conflict-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
 
 .ptl__label {
   font-size: 0.6rem;

@@ -19,7 +19,7 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 20;
 const ZOOM_STEP = 1.6; // per button click or scroll tick
 
-export default function PointTimeline({ points, duration, currentTime, pendingStart, onSeek, names = ['P1', 'P2'] }) {
+export default function PointTimeline({ points, duration, currentTime, pendingStart, onSeek, names = ['P1', 'P2'], conflictPointId = null }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState(0); // left edge as fraction of total duration
 
@@ -149,7 +149,7 @@ export default function PointTimeline({ points, duration, currentTime, pendingSt
           return (
             <div
               key={pt.id}
-              className={`ptl__segment ${pt.winner === 1 ? 'ptl__segment--p1' : 'ptl__segment--p2'}`}
+              className={`ptl__segment ${pt.winner === 1 ? 'ptl__segment--p1' : 'ptl__segment--p2'}${pt.id === conflictPointId ? ' ptl__segment--conflict' : ''}`}
               style={{ left: `${clampedLeft}%`, width: `${widthPct}%` }}
               title={`${fmtTime(pt.startTime)}–${fmtTime(pt.endTime)} · ${label} · ${pt.winner === 1 ? names[0] : names[1]} wins`}
               onClick={e => { e.stopPropagation(); onSeek(pt.startTime); }}
