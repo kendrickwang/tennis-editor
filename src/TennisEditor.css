@@ -382,13 +382,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  font-weight: 500;
   transition: color 0.15s, background 0.15s;
 }
 .te__sidebar-toggle:hover {
   color: var(--accent);
   background: var(--accent-dim);
 }
-.te__sidebar-toggle svg { display: block; }
+.te__sidebar-toggle svg { display: block; flex-shrink: 0; }
 
 /* ── File bar (legacy — kept for upload page) ──────────────── */
 .te__file-bar {

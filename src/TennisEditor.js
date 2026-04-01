@@ -1229,14 +1229,14 @@ export default function TennisEditor() {
               onClick={() => setSidebarOpen(o => !o)}
               title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
-              {/* sidebar-panel icon — left panel fills when open, flips when collapsed */}
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="1.5" y="1.5" width="15" height="15" rx="2.5"/>
                 <line x1="6.5" y1="1.5" x2="6.5" y2="16.5"/>
                 {sidebarOpen
                   ? <rect x="1.5" y="1.5" width="5" height="15" rx="2.5" fill="currentColor" fillOpacity="0.35" stroke="none"/>
                   : <rect x="11.5" y="1.5" width="5" height="15" rx="2.5" fill="currentColor" fillOpacity="0.35" stroke="none"/>}
               </svg>
+              {sidebarOpen && <span>Minimize</span>}
             </button>
           </div>
 
