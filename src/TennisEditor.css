@@ -1698,3 +1698,93 @@ kbd {
 
 .te__modal-accept:hover { opacity: 0.88; }
 .te__modal-accept:active { transform: scale(0.98); }
+
+/* ── Toast notifications (file-info & undo) ──────────────── */
+.te__toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 16px;
+  font-size: 0.81rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  border-bottom: 1px solid transparent;
+}
+
+.te__toast--info {
+  background: rgba(91, 91, 214, 0.05);
+  color: var(--text-2);
+  border-color: rgba(91, 91, 214, 0.12);
+}
+
+.te__toast--undo {
+  background: rgba(5, 150, 105, 0.06);
+  color: var(--p1);
+  border-color: rgba(5, 150, 105, 0.18);
+}
+
+.te__toast-undo-btn {
+  flex-shrink: 0;
+  background: var(--p1-bg);
+  border: 1px solid var(--p1-border);
+  color: var(--p1);
+  padding: 3px 12px;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.te__toast-undo-btn:hover { background: rgba(5, 150, 105, 0.15); }
+
+/* ── Status bar recording / saved phase decorations ─────── */
+.te__status-rec-dot {
+  font-size: 0.5rem;
+  color: #ef4444;
+  animation: te-rec-blink 0.9s ease-in-out infinite alternate;
+  flex-shrink: 0;
+}
+@keyframes te-rec-blink {
+  from { opacity: 0.35; }
+  to   { opacity: 1; }
+}
+
+.te__status--phase-recording {
+  border-left: 3px solid #ef4444;
+}
+.te__status--phase-saved {
+  border-left: 3px solid var(--p1);
+}
+
+/* ── Topbar export progress badge ────────────────────────── */
+.te__topbar-export-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(91, 91, 214, 0.3);
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+}
+
+.te__topbar-export-bar {
+  width: 48px;
+  height: 3px;
+  background: rgba(91, 91, 214, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.te__topbar-export-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
