@@ -725,25 +725,51 @@
   border-radius: 4px;
 }
 
-/* ── Keyboard hints ───────────────────────────────────────── */
-.te__hints {
-  display: flex;
-  gap: 1.25rem;
-  flex-wrap: wrap;
-  padding: 0.625rem 1rem;
-  background: var(--surface);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
+/* ── Video area — reference block for hint positioning ─────── */
+.te__video-area {
+  position: relative;
 }
 
-.te__hints span {
-  font-size: 0.76rem;
-  color: var(--text-3);
+/* ── Keyboard hints — absolute inside te__video-area ──────────
+   Scrolls with the page (disappears when you scroll past the video).
+   transform shifts the column left of the video's left edge.           */
+.te__hints {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateX(calc(-100% - 10px));
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.te__hint-pill {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.te__hint-pill span {
+  font-size: 0.72rem;
+  color: var(--text-2);
   font-weight: 500;
 }
+
+/* Color-coded action keys */
+.te__hint-pill--s { border-left: 2px solid var(--accent); }
+.te__hint-pill--s kbd { background: var(--accent-dim); border-color: rgba(91,91,214,0.35); color: var(--accent); }
+.te__hint-pill--e { border-left: 2px solid var(--p1); }
+.te__hint-pill--e kbd { background: var(--p1-bg); border-color: var(--p1-border); color: var(--p1); }
+.te__hint-pill--r { border-left: 2px solid var(--p2); }
+.te__hint-pill--r kbd { background: var(--p2-bg); border-color: var(--p2-border); color: var(--p2); }
 
 kbd {
   background: var(--surface-2);

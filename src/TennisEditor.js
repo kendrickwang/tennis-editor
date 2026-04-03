@@ -759,6 +759,18 @@ export default function TennisEditor() {
           <div className="te__body">
           <div className="te__content">
 
+          {/* Video area — hints float left via absolute, video fills full width */}
+          <div className="te__video-area">
+          <div className="te__hints">
+            <div className="te__hint-pill"><kbd>Space</kbd><span>Play / Pause</span></div>
+            <div className="te__hint-pill"><kbd>←</kbd><kbd>→</kbd><span>±3 sec</span></div>
+            <div className="te__hint-pill te__hint-pill--s"><kbd>S</kbd><span>Mark start</span></div>
+            <div className="te__hint-pill te__hint-pill--e"><kbd>E</kbd><span>P1 wins</span></div>
+            <div className="te__hint-pill te__hint-pill--r"><kbd>R</kbd><span>P2 wins</span></div>
+            <div className="te__hint-pill"><kbd>Del</kbd><kbd>Del</kbd><span>Delete last</span></div>
+            <div className="te__hint-pill"><kbd>⌘Z</kbd><span>Undo</span></div>
+          </div>
+
           {/* Video + scoreboard overlay + custom controls */}
           <div
             className={`te__video-wrap${videoGlow ? ` te__video-wrap--glow-${videoGlow}` : ''}`}
@@ -846,6 +858,7 @@ export default function TennisEditor() {
               </div>
             </div>
           </div>
+          </div>{/* end te__video-area */}
 
           {/* Status bar — only rendered when there's something to show */}
           {(status.text || pendingStart !== null) && (
@@ -856,17 +869,6 @@ export default function TennisEditor() {
               {status.text}
             </div>
           )}
-
-          {/* Keyboard hints */}
-          <div className="te__hints">
-            <span><kbd>Space</kbd> Play / Pause</span>
-            <span><kbd>←</kbd><kbd>→</kbd> ±3 sec</span>
-            <span><kbd>S</kbd> Mark start</span>
-            <span><kbd>E</kbd> P1 wins</span>
-            <span><kbd>R</kbd> P2 wins</span>
-            <span><kbd>Del</kbd><kbd>Del</kbd> Delete last</span>
-            <span><kbd>⌘Z</kbd> Undo</span>
-          </div>
 
           {/* Point timeline */}
           <PointTimeline
