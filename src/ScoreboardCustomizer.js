@@ -104,10 +104,11 @@ function HexColorInput({ value, onChange }) {
   );
 }
 
+const CONTRAST_LABEL = { good: 'High', ok: 'Med', poor: 'Low' };
+
 function ColorPair({ bgLabel, textLabel, bgValue, textValue, onBgChange, onTextChange }) {
   const ratio = contrastRatio(bgValue, textValue);
   const grade = contrastGrade(ratio);
-  const needsFix = grade !== 'good';
 
   // NOTE: Do NOT wrap onBgChange — each parent callback already handles text-color
   // sync atomically inside a single setMany() call. Calling onTextChange separately
@@ -125,18 +126,9 @@ function ColorPair({ bgLabel, textLabel, bgValue, textValue, onBgChange, onTextC
           <span className="sbc__pair-label">{textLabel}</span>
           <HexColorInput value={textValue} onChange={onTextChange} />
         </div>
-        <div className={`sbc__contrast sbc__contrast--${grade}`} title={`${ratio.toFixed(1)}:1 contrast`}>
-          {ratio.toFixed(1)}
+        <div className={`sbc__contrast sbc__contrast--${grade}`} title={`${ratio.toFixed(1)}:1 contrast ratio`}>
+          {CONTRAST_LABEL[grade]}
         </div>
-        {needsFix && (
-          <button
-            className="sbc__autofix-btn"
-            title="Auto-fix text color for readability"
-            onClick={() => onTextChange(autoTextColor(bgValue))}
-          >
-            Fix ↺
-          </button>
-        )}
       </div>
       <div className="sbc__pair-preview" style={{ background: bgValue, color: textValue }}>
         Aa 15 30 40
@@ -154,8 +146,8 @@ function ColorRow({ label, value, onChange, contrastAgainst }) {
       <div className="sbc__color-wrap">
         <HexColorInput value={value} onChange={onChange} />
         {grade && (
-          <span className={`sbc__contrast sbc__contrast--${grade}`} title={`${ratio.toFixed(1)}:1 contrast`}>
-            {ratio.toFixed(1)}
+          <span className={`sbc__contrast sbc__contrast--${grade}`} title={`${ratio.toFixed(1)}:1 contrast ratio`}>
+            {CONTRAST_LABEL[grade]}
           </span>
         )}
       </div>
@@ -309,13 +301,7 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
           {violations.map(v => (
             <div key={v.fgKey} className="sbc__violation-row">
               <span className="sbc__violation-label">{v.label}</span>
-              <span className={`sbc__contrast sbc__contrast--${v.grade}`}>{v.ratio}:1</span>
-              <button
-                className="sbc__autofix-btn"
-                onClick={() => set(v.fgKey, autoTextColor(theme[v.bgKey]))}
-              >
-                Fix ↺
-              </button>
+              <span className={`sbc__contrast sbc__contrast--${v.grade}`}>{CONTRAST_LABEL[v.grade]}</span>
             </div>
           ))}
         </div>
