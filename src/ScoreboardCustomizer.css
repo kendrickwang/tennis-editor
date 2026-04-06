@@ -90,6 +90,16 @@
   color: var(--text, #EDF0FF);
   border-color: var(--accent, #6366F1);
 }
+.sbc__preset-btn--active {
+  background: var(--accent, #6366F1);
+  border-color: var(--accent, #6366F1);
+  color: #fff;
+}
+.sbc__preset-btn--active:hover {
+  background: var(--accent, #6366F1);
+  border-color: var(--accent, #6366F1);
+  color: #fff;
+}
 .sbc__preset-btn--reset {
   color: var(--error, #F87171);
   border-color: rgba(248, 113, 113, 0.25);

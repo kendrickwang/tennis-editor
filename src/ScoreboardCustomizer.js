@@ -323,11 +323,18 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
 
       {/* ── Presets ─────────────────────────────── */}
       <div className="sbc__presets">
-        {Object.keys(PRESETS).map(name => (
-          <button key={name} className="sbc__preset-btn" onClick={() => applyPreset(name)}>
-            {name}
-          </button>
-        ))}
+        {Object.keys(PRESETS).map(name => {
+          const isActive = JSON.stringify(sanitizeTheme({ ...PRESETS[name] })) === JSON.stringify(theme);
+          return (
+            <button
+              key={name}
+              className={`sbc__preset-btn${isActive ? ' sbc__preset-btn--active' : ''}`}
+              onClick={() => applyPreset(name)}
+            >
+              {name}
+            </button>
+          );
+        })}
         <button className="sbc__preset-btn sbc__preset-btn--reset" onClick={() => applyPreset('US Open')}>
           Reset
         </button>

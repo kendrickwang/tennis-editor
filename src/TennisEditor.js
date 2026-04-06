@@ -718,12 +718,8 @@ export default function TennisEditor() {
           <div className="te__topbar">
             <span className="te__topbar-logo">Court Clipper</span>
             <span className="te__topbar-file">🎬 {fileName}</span>
-            <div className="te__topbar-spacer" />
-            <button className="te__topbar-btn" onClick={() => setShowHelp(true)} title="How to use">?</button>
             <div className="te__topbar-sep" />
-            {points.length > 0 && (
-              <button className="te__topbar-btn" onClick={saveSession} title="Download edits as a JSON backup">↓ Save</button>
-            )}
+            <button className="te__topbar-btn" onClick={() => setShowHelp(true)} title="How to use">?</button>
             <label className="te__topbar-btn" title="Restore edits from a saved session file">
               ↑ Load
               <input ref={sessionFileInputRef} type="file" accept=".json,application/json"
@@ -740,9 +736,17 @@ export default function TennisEditor() {
             <button className="te__topbar-btn" onClick={() => fileInputRef.current.click()}>Change video</button>
             <input ref={fileInputRef} type="file" accept="video/*"
               onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
+            <div className="te__topbar-spacer" />
+            {points.length > 0 && (
+              <button className="te__topbar-btn" onClick={saveSession} title="Download edits as a JSON backup">↓ Save</button>
+            )}
           </div>
 
-          {/* Restore prompt */}
+          {/* Two-column body: content + sidebar */}
+          <div className="te__body">
+          <div className="te__content">
+
+          {/* Restore prompt — inside te__content so it matches video width */}
           {restorePrompt && (
             <div className="te__restore-banner">
               <span className="te__restore-text">
@@ -754,10 +758,6 @@ export default function TennisEditor() {
               </div>
             </div>
           )}
-
-          {/* Two-column body: content + sidebar */}
-          <div className="te__body">
-          <div className="te__content">
 
           {/* Video area — hints float left via absolute, video fills full width */}
           <div className="te__video-area">
