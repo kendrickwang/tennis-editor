@@ -94,6 +94,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .sb__subtitle {
   font-size: 0.55rem;
@@ -101,7 +102,11 @@
   letter-spacing: 0.04em;
   opacity: 0.75;
   text-transform: uppercase;
-  flex-shrink: 0;
+  /* Collapse before the name ever truncates */
+  flex-shrink: 999;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 /* Badge: constrained to 1.2× font height so it never pushes the row taller */
