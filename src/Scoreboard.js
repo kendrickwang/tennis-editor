@@ -1,3 +1,4 @@
+import { useRef, useLayoutEffect, useState } from 'react';
 import { DEFAULT_THEME } from './scoreboardTheme';
 import './Scoreboard.css';
 
@@ -57,6 +58,27 @@ export default function Scoreboard({
   const subtitles = [theme.p1Subtitle, theme.p2Subtitle];
   const badges    = [theme.p1Badge,    theme.p2Badge];
 
+  // Measure whether name + subtitle actually fit — hide subtitle if not
+  const cellRef0 = useRef(null);
+  const cellRef1 = useRef(null);
+  const cellRefs = [cellRef0, cellRef1];
+  const [hideSubs, setHideSubs] = useState([false, false]);
+
+  useLayoutEffect(() => {
+    setHideSubs(prev => {
+      const next = cellRefs.map((ref, i) => {
+        if (!ref.current) return false;
+        const nameEl = ref.current.querySelector('.sb__name-text');
+        const subEl  = ref.current.querySelector('.sb__subtitle');
+        if (!nameEl || !subEl) return false;
+        // Compare natural widths (scrollWidth ignores flex shrinking)
+        return nameEl.scrollWidth + subEl.scrollWidth + 5 > ref.current.offsetWidth;
+      });
+      return (prev[0] === next[0] && prev[1] === next[1]) ? prev : next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [names, theme.subtitleVisible, theme.p1Subtitle, theme.p2Subtitle, theme.fontFamily, theme.nameFontWeight, theme.cellPaddingV]);
+
   const showFooter = theme.footerVisible && theme.footerText;
 
   return (
@@ -80,10 +102,17 @@ export default function Scoreboard({
                     ●
                   </td>
                   <td className={`sb__td sb__td--name ${score.matchWinner === pi + 1 ? 'sb__td--winner' : ''}`}>
-                    <span className="sb__name-cell">
+                    <span className="sb__name-cell" ref={cellRefs[pi]}>
                       {badge && <img className="sb__badge" src={badge} alt="" />}
                       <span className="sb__name-text">{names[pi].toUpperCase()}</span>
-                      {subtitle && <span className="sb__subtitle">{subtitle}</span>}
+                      {subtitle && (
+                        <span
+                          className="sb__subtitle"
+                          style={hideSubs[pi] ? { visibility: 'hidden', position: 'absolute', pointerEvents: 'none' } : undefined}
+                        >
+                          {subtitle}
+                        </span>
+                      )}
                     </span>
                   </td>
                   {allSets.map((s, si) => {

@@ -250,6 +250,13 @@
   letter-spacing: -0.02em;
   color: var(--text);
 }
+.te__version {
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  opacity: 0.4;
+  vertical-align: middle;
+}
 .te__topbar-file {
   font-size: 0.72rem;
   color: var(--text-2);
@@ -289,17 +296,17 @@
 /* ── Persistent sidebar — fixed overlay, never pushes content ─ */
 .te__sidebar {
   position: fixed;
-  top: 48px; /* below topbar */
+  top: 0;
   right: 0;
   width: 260px;
-  height: calc(100vh - 48px);
+  height: 100vh;
   background: var(--surface);
   border-left: 1px solid var(--border);
   box-shadow: -4px 0 24px rgba(0, 0, 0, 0.07);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  z-index: 100;
+  z-index: 150; /* above topbar so sidebar covers full height */
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .te__sidebar--collapsed {
@@ -725,25 +732,51 @@
   border-radius: 4px;
 }
 
-/* ── Keyboard hints ───────────────────────────────────────── */
-.te__hints {
-  display: flex;
-  gap: 1.25rem;
-  flex-wrap: wrap;
-  padding: 0.625rem 1rem;
-  background: var(--surface);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
+/* ── Video area — reference block for hint positioning ─────── */
+.te__video-area {
+  position: relative;
 }
 
-.te__hints span {
-  font-size: 0.76rem;
-  color: var(--text-3);
+/* ── Keyboard hints — absolute inside te__video-area ──────────
+   Scrolls with the page (disappears when you scroll past the video).
+   transform shifts the column left of the video's left edge.           */
+.te__hints {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateX(calc(-100% - 10px));
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.te__hint-pill {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.te__hint-pill span {
+  font-size: 0.72rem;
+  color: var(--text-2);
   font-weight: 500;
 }
+
+/* Color-coded action keys */
+.te__hint-pill--s { border-left: 2px solid var(--accent); }
+.te__hint-pill--s kbd { background: var(--accent-dim); border-color: rgba(91,91,214,0.35); color: var(--accent); }
+.te__hint-pill--e { border-left: 2px solid var(--p1); }
+.te__hint-pill--e kbd { background: var(--p1-bg); border-color: var(--p1-border); color: var(--p1); }
+.te__hint-pill--r { border-left: 2px solid var(--p2); }
+.te__hint-pill--r kbd { background: var(--p2-bg); border-color: var(--p2-border); color: var(--p2); }
 
 kbd {
   background: var(--surface-2);
@@ -1698,93 +1731,3 @@ kbd {
 
 .te__modal-accept:hover { opacity: 0.88; }
 .te__modal-accept:active { transform: scale(0.98); }
-
-/* ── Toast notifications (file-info & undo) ──────────────── */
-.te__toast {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 16px;
-  font-size: 0.81rem;
-  font-weight: 500;
-  flex-shrink: 0;
-  border-bottom: 1px solid transparent;
-}
-
-.te__toast--info {
-  background: rgba(91, 91, 214, 0.05);
-  color: var(--text-2);
-  border-color: rgba(91, 91, 214, 0.12);
-}
-
-.te__toast--undo {
-  background: rgba(5, 150, 105, 0.06);
-  color: var(--p1);
-  border-color: rgba(5, 150, 105, 0.18);
-}
-
-.te__toast-undo-btn {
-  flex-shrink: 0;
-  background: var(--p1-bg);
-  border: 1px solid var(--p1-border);
-  color: var(--p1);
-  padding: 3px 12px;
-  border-radius: 5px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.te__toast-undo-btn:hover { background: rgba(5, 150, 105, 0.15); }
-
-/* ── Status bar recording / saved phase decorations ─────── */
-.te__status-rec-dot {
-  font-size: 0.5rem;
-  color: #ef4444;
-  animation: te-rec-blink 0.9s ease-in-out infinite alternate;
-  flex-shrink: 0;
-}
-@keyframes te-rec-blink {
-  from { opacity: 0.35; }
-  to   { opacity: 1; }
-}
-
-.te__status--phase-recording {
-  border-left: 3px solid #ef4444;
-}
-.te__status--phase-saved {
-  border-left: 3px solid var(--p1);
-}
-
-/* ── Topbar export progress badge ────────────────────────── */
-.te__topbar-export-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  background: var(--accent-dim);
-  border: 1px solid rgba(91, 91, 214, 0.3);
-  border-radius: 99px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--accent);
-  white-space: nowrap;
-  max-width: 200px;
-  overflow: hidden;
-}
-
-.te__topbar-export-bar {
-  width: 48px;
-  height: 3px;
-  background: rgba(91, 91, 214, 0.2);
-  border-radius: 2px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.te__topbar-export-bar-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width 0.4s ease;
-}

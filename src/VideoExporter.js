@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { toBlobURL } from '@ffmpeg/util';
 import { drawScoreboardToCanvas, canvasToUint8Array } from './scoreboardCanvas';
@@ -65,7 +65,7 @@ export function probeVideoDimensions(videoFile) {
   });
 }
 
-export default function VideoExporter({ videoFile, points, fileName, names = ['P1', 'P2'], serving = 0, scoreboardTheme, onExportStatus }) {
+export default function VideoExporter({ videoFile, points, fileName, names = ['P1', 'P2'], serving = 0, scoreboardTheme }) {
   const [phase, setPhase] = useState('idle');
   const [progress, setProgress] = useState(0);
   const [stepLabel, setStepLabel] = useState('');
@@ -76,11 +76,6 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
 
   const startedAt = useRef(null);
   const phaseRef = useRef('idle');
-
-  // Notify parent (topbar badge) whenever export state changes
-  useEffect(() => {
-    onExportStatus?.({ phase, progress, stepLabel, secsLeft });
-  }, [phase, progress, stepLabel, secsLeft]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canExport = Boolean(videoFile && points.length > 0);
   const isRunning = phase === 'loading' || phase === 'working';
@@ -94,36 +89,6 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
 
   async function runExport() {
     if (!canExport || isRunning) return;
-
-    // ── Pre-export validation (#6) ───────────────────────────────────────────
-    if (points.length === 0) {
-      setErrorMsg('No clips to export — tag some points first with S → E/R.');
-      setPhase('error');
-      phaseRef.current = 'error';
-      return;
-    }
-
-    if (showScoreboard) {
-      const totalSecs = points.reduce((s, pt) => s + (pt.endTime - pt.startTime), 0);
-      if (outputRes === 'source' && points.length > 80) {
-        setErrorMsg(
-          `Exporting ${points.length} clips at source resolution may run out of memory mid-export. ` +
-          'Switch to 720p for a reliable export.'
-        );
-        setPhase('error');
-        phaseRef.current = 'error';
-        return;
-      }
-      if (totalSecs > 7200) {
-        setErrorMsg(
-          `Total clip length is ${Math.round(totalSecs / 60)} minutes — this may take a very long time. ` +
-          'Consider splitting your export into smaller batches.'
-        );
-        setPhase('error');
-        phaseRef.current = 'error';
-        return;
-      }
-    }
 
     setPhase('loading');
     phaseRef.current = 'loading';
@@ -312,28 +277,12 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
       setPhase('error');
       phaseRef.current = 'error';
       const raw = err?.message || String(err);
-      let msg;
-      if (
-        raw.includes('memory access out of bounds') ||
-        raw.includes('out of memory') ||
-        raw.includes('RuntimeError') ||
-        raw.includes('table index is out of bounds')
-      ) {
-        msg =
-          'Ran out of memory mid-export. Switch to 720p resolution and try again, ' +
-          'or reduce the number of clips.';
-      } else if (raw.includes('No such file') || raw.includes('ENOENT') || raw.includes('no such file')) {
-        msg = 'Could not read the video file — it may have been moved or deleted. Reload the page and try again.';
-      } else if (raw.includes('codec not found') || raw.includes('Decoder') || raw.includes('muxer')) {
-        msg = 'Unsupported video format. Convert the source to H.264 MP4 first, then re-export.';
-      } else if (raw.includes('timeout') || raw.includes('Timeout') || raw.includes('Worker')) {
-        msg = 'The export worker stopped responding. Reload the page and try with fewer clips.';
-      } else if (raw.includes('SharedArrayBuffer') || raw.includes('cross-origin')) {
-        msg = 'Browser security settings blocked the export. Open the app from its full URL (not a local file).';
-      } else {
-        msg = `Export failed — ${raw}`;
-      }
-      setErrorMsg(msg);
+      const isOOM = raw.includes('memory access out of bounds') || raw.includes('out of memory');
+      setErrorMsg(
+        isOOM
+          ? 'FFmpeg ran out of memory. Try 720p output, fewer clips, or a shorter source video.'
+          : raw
+      );
     }
   }
 

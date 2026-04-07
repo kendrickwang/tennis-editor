@@ -6,6 +6,7 @@ import VideoExporter from './VideoExporter';
 import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel, recomputeScores, computeServer } from './tennisScore';
 import { canBrowserPlayNatively, transcodeToH264 } from './transcodeVideo';
 import { DEFAULT_THEME } from './scoreboardTheme';
+import { VERSION } from './version';
 import { drawScoreboardToCanvas } from './scoreboardCanvas';
 import './TennisEditor.css';
 
@@ -74,26 +75,10 @@ export default function TennisEditor() {
   // null = no prompt; object = saved session to offer restoring
   const [restorePrompt, setRestorePrompt] = useState(null);
   const [sampleLoading, setSampleLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    try { return localStorage.getItem('cc-sidebar-open') !== 'false'; } catch (_) { return true; }
-  });
-  const [scoreboardSectionOpen, setScoreboardSectionOpen] = useState(false);
-  // null | { phase, progress, stepLabel, secsLeft } — fed by VideoExporter
-  const [exportStatus, setExportStatus] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [scoreboardSectionOpen, setScoreboardSectionOpen] = useState(true);
   // ID of a point that conflicts with the current recording action — highlighted in timeline
   const [conflictPointId, setConflictPointId] = useState(null);
-  // Undo toast: null | { text, pointIdx }
-  const [undoToast, setUndoToast] = useState(null);
-  const undoToastTimerRef = useRef(null);
-  // 'idle' | 'recording' | 'saved' — drives distinct visual state in status bar
-  const [tagPhase, setTagPhase] = useState('idle');
-  // File info shown briefly after load
-  const [fileInfo, setFileInfo] = useState(null);
-
-  // Persist sidebar open/closed state
-  useEffect(() => {
-    try { localStorage.setItem('cc-sidebar-open', sidebarOpen); } catch (_) {}
-  }, [sidebarOpen]);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -304,13 +289,6 @@ export default function TennisEditor() {
       }
     }
 
-    // ? key — open help modal
-    if (e.code === 'Slash' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
-      e.preventDefault();
-      setShowHelp(true);
-      return;
-    }
-
     // Ctrl+Z — undo last point action
     if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
@@ -324,8 +302,6 @@ export default function TennisEditor() {
       scoreRef.current = finalScore;
       setPendingStart(prev.pendingStart);
       pendingStartRef.current = prev.pendingStart;
-      setTagPhase(prev.pendingStart ? 'recording' : 'idle');
-      setUndoToast(null);
       setStatus({ text: `Undone — ${restored.length} point${restored.length !== 1 ? 's' : ''}`, kind: 'info' });
       clearTimeout(glowTimerRef.current);
       setVideoGlow('info');
@@ -428,7 +404,6 @@ export default function TennisEditor() {
       pushUndo(); // save state so S can be undone (cancels pending start)
       pendingStartRef.current = t;
       setPendingStart(t);
-      setTagPhase('recording');
       setStatus({ text: `Start: ${fmtTime(t)} — now press E (P1 wins) or R (P2 wins)`, kind: 'info' });
       clearTimeout(glowTimerRef.current);
       setVideoGlow('info'); // persists until E or R clears it
@@ -472,7 +447,6 @@ export default function TennisEditor() {
       // Clear pending start so user must re-press S
       pendingStartRef.current = null;
       setPendingStart(null);
-      setTagPhase('idle');
       return;
     }
 
@@ -486,14 +460,11 @@ export default function TennisEditor() {
     scoreRef.current = finalScore;
     pendingStartRef.current = null;
     setPendingStart(null);
-    setTagPhase('saved');
-    setTimeout(() => setTagPhase('idle'), 2000);
 
     // Find this point's scoreBefore to show the score at that moment in the video
     const inserted = recomputed.find(p => p.id === newPt.id);
     const scoreAfterThisPoint = addPoint(inserted.scoreBefore, winner, matchConfigRef.current);
     const label = scoreLabel(scoreAfterThisPoint);
-    const pointIdx = recomputed.indexOf(inserted) + 1;
     setStatus({
       text: `${winner === 1 ? p1NameRef.current : p2NameRef.current} wins · Score: ${label} · Games: ${scoreAfterThisPoint.currentSet[0]}–${scoreAfterThisPoint.currentSet[1]}`,
       kind: 'success',
@@ -501,11 +472,6 @@ export default function TennisEditor() {
     clearTimeout(glowTimerRef.current);
     setVideoGlow('success');
     glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1200);
-
-    // Undo toast
-    clearTimeout(undoToastTimerRef.current);
-    setUndoToast({ text: `Point #${pointIdx} tagged at ${fmtTime(startTime)}`, pointIdx });
-    undoToastTimerRef.current = setTimeout(() => setUndoToast(null), 4000);
   }, []); // stable — reads from refs only
 
   useEffect(() => {
@@ -703,7 +669,7 @@ export default function TennisEditor() {
       {showHelp && (
         <HelpModal names={[p1Name, p2Name]} onAccept={() => setShowHelp(false)} />
       )}
-      {!videoSrc && <h1 className="te__title">Court Clipper</h1>}
+      {!videoSrc && <h1 className="te__title">Court Clipper <span className="te__version">v{VERSION}</span></h1>}
 
       {!videoSrc ? (
         <>
@@ -751,22 +717,10 @@ export default function TennisEditor() {
         <div className="te__workspace">
           {/* Top bar */}
           <div className="te__topbar">
-            <span className="te__topbar-logo">Court Clipper</span>
+            <span className="te__topbar-logo">Court Clipper <span className="te__version">v{VERSION}</span></span>
             <span className="te__topbar-file">🎬 {fileName}</span>
-            <div className="te__topbar-spacer" />
-            {exportStatus && (exportStatus.phase === 'loading' || exportStatus.phase === 'working') && (
-              <div className="te__topbar-export-badge" title={exportStatus.stepLabel}>
-                <span>{exportStatus.stepLabel || 'Exporting…'}</span>
-                <div className="te__topbar-export-bar">
-                  <div className="te__topbar-export-bar-fill" style={{ width: `${Math.round(exportStatus.progress * 100)}%` }} />
-                </div>
-              </div>
-            )}
-            <button className="te__topbar-btn" onClick={() => setShowHelp(true)} title="How to use (?)">?</button>
             <div className="te__topbar-sep" />
-            {points.length > 0 && (
-              <button className="te__topbar-btn" onClick={saveSession} title="Download edits as a JSON backup">↓ Save</button>
-            )}
+            <button className="te__topbar-btn" onClick={() => setShowHelp(true)} title="How to use">?</button>
             <label className="te__topbar-btn" title="Restore edits from a saved session file">
               ↑ Load
               <input ref={sessionFileInputRef} type="file" accept=".json,application/json"
@@ -783,36 +737,17 @@ export default function TennisEditor() {
             <button className="te__topbar-btn" onClick={() => fileInputRef.current.click()}>Change video</button>
             <input ref={fileInputRef} type="file" accept="video/*"
               onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
+            <div className="te__topbar-spacer" />
+            {points.length > 0 && (
+              <button className="te__topbar-btn" onClick={saveSession} title="Download edits as a JSON backup">↓ Save</button>
+            )}
           </div>
 
-          {/* File info confirmation toast */}
-          {fileInfo && (
-            <div className="te__toast te__toast--info">{fileInfo}</div>
-          )}
+          {/* Two-column body: content + sidebar */}
+          <div className="te__body">
+          <div className="te__content">
 
-          {/* Undo toast */}
-          {undoToast && (
-            <div className="te__toast te__toast--undo">
-              <span>{undoToast.text}</span>
-              <button className="te__toast-undo-btn" onClick={() => {
-                const stack = undoStackRef.current;
-                if (stack.length === 0) return;
-                const prev = stack[stack.length - 1];
-                undoStackRef.current = stack.slice(0, -1);
-                const { points: restored, finalScore } = recomputeScores(prev.points, initialServerRef.current, matchConfigRef.current);
-                setPoints(restored);
-                setScore(finalScore);
-                scoreRef.current = finalScore;
-                setPendingStart(prev.pendingStart);
-                pendingStartRef.current = prev.pendingStart;
-                setTagPhase(prev.pendingStart ? 'recording' : 'idle');
-                setUndoToast(null);
-                setStatus({ text: `Undone — ${restored.length} point${restored.length !== 1 ? 's' : ''}`, kind: 'info' });
-              }}>Undo</button>
-            </div>
-          )}
-
-          {/* Restore prompt */}
+          {/* Restore prompt — inside te__content so it matches video width */}
           {restorePrompt && (
             <div className="te__restore-banner">
               <span className="te__restore-text">
@@ -825,9 +760,17 @@ export default function TennisEditor() {
             </div>
           )}
 
-          {/* Two-column body: content + sidebar */}
-          <div className="te__body">
-          <div className="te__content">
+          {/* Video area — hints float left via absolute, video fills full width */}
+          <div className="te__video-area">
+          <div className="te__hints">
+            <div className="te__hint-pill"><kbd>Space</kbd><span>Play / Pause</span></div>
+            <div className="te__hint-pill"><kbd>←</kbd><kbd>→</kbd><span>±3 sec</span></div>
+            <div className="te__hint-pill te__hint-pill--s"><kbd>S</kbd><span>Mark start</span></div>
+            <div className="te__hint-pill te__hint-pill--e"><kbd>E</kbd><span>P1 wins</span></div>
+            <div className="te__hint-pill te__hint-pill--r"><kbd>R</kbd><span>P2 wins</span></div>
+            <div className="te__hint-pill"><kbd>Del</kbd><kbd>Del</kbd><span>Delete last</span></div>
+            <div className="te__hint-pill"><kbd>⌘Z</kbd><span>Undo</span></div>
+          </div>
 
           {/* Video + scoreboard overlay + custom controls */}
           <div
@@ -838,14 +781,7 @@ export default function TennisEditor() {
               ref={videoRef}
               src={videoSrc}
               className="te__video"
-              onLoadedMetadata={() => {
-                const v = videoRef.current;
-                setDuration(v.duration);
-                const mins = Math.floor(v.duration / 60);
-                const secs = Math.floor(v.duration % 60);
-                setFileInfo(`${fileName} · ${mins}:${String(secs).padStart(2,'0')} · ${v.videoWidth}×${v.videoHeight}`);
-                setTimeout(() => setFileInfo(null), 4000);
-              }}
+              onLoadedMetadata={() => setDuration(videoRef.current.duration)}
             />
             <div className="te__sb-overlay">
               <Scoreboard
@@ -923,30 +859,17 @@ export default function TennisEditor() {
               </div>
             </div>
           </div>
+          </div>{/* end te__video-area */}
 
           {/* Status bar — only rendered when there's something to show */}
           {(status.text || pendingStart !== null) && (
-            <div className={`te__status te__status--${status.kind} te__status--phase-${tagPhase}`}>
-              {tagPhase === 'recording' && (
-                <span className="te__status-rec-dot" aria-hidden="true">●</span>
-              )}
+            <div className={`te__status te__status--${status.kind}`}>
               {pendingStart !== null && (
-                <span className="te__status-marker">Start: {fmtTime(pendingStart)}</span>
+                <span className="te__status-marker">● Start: {fmtTime(pendingStart)}</span>
               )}
               {status.text}
             </div>
           )}
-
-          {/* Keyboard hints */}
-          <div className="te__hints">
-            <span><kbd>Space</kbd> Play / Pause</span>
-            <span><kbd>←</kbd><kbd>→</kbd> ±3 sec</span>
-            <span><kbd>S</kbd> Mark start</span>
-            <span><kbd>E</kbd> P1 wins</span>
-            <span><kbd>R</kbd> P2 wins</span>
-            <span><kbd>Del</kbd><kbd>Del</kbd> Delete last</span>
-            <span><kbd>⌘Z</kbd> Undo</span>
-          </div>
 
           {/* Point timeline */}
           <PointTimeline
@@ -1296,7 +1219,6 @@ export default function TennisEditor() {
                       names={[p1Name, p2Name]}
                       serving={serving}
                       scoreboardTheme={scoreboardTheme}
-                      onExportStatus={setExportStatus}
                     />
                   </div>
                 )}
@@ -1309,7 +1231,6 @@ export default function TennisEditor() {
               className="te__sidebar-toggle"
               onClick={() => setSidebarOpen(o => !o)}
               title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-              aria-label={sidebarOpen ? 'Minimize sidebar' : 'Expand sidebar'}
             >
               <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="1.5" y="1.5" width="15" height="15" rx="2.5"/>
