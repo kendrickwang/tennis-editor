@@ -6,6 +6,7 @@ import VideoExporter from './VideoExporter';
 import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel, recomputeScores, computeServer } from './tennisScore';
 import { canBrowserPlayNatively, transcodeToH264 } from './transcodeVideo';
 import { DEFAULT_THEME } from './scoreboardTheme';
+import { VERSION } from './version';
 import { drawScoreboardToCanvas } from './scoreboardCanvas';
 import './TennisEditor.css';
 
@@ -668,7 +669,7 @@ export default function TennisEditor() {
       {showHelp && (
         <HelpModal names={[p1Name, p2Name]} onAccept={() => setShowHelp(false)} />
       )}
-      {!videoSrc && <h1 className="te__title">Court Clipper</h1>}
+      {!videoSrc && <h1 className="te__title">Court Clipper <span className="te__version">v{VERSION}</span></h1>}
 
       {!videoSrc ? (
         <>
@@ -716,7 +717,7 @@ export default function TennisEditor() {
         <div className="te__workspace">
           {/* Top bar */}
           <div className="te__topbar">
-            <span className="te__topbar-logo">Court Clipper</span>
+            <span className="te__topbar-logo">Court Clipper <span className="te__version">v{VERSION}</span></span>
             <span className="te__topbar-file">🎬 {fileName}</span>
             <div className="te__topbar-sep" />
             <button className="te__topbar-btn" onClick={() => setShowHelp(true)} title="How to use">?</button>
