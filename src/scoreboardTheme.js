@@ -1,28 +1,28 @@
 export const DEFAULT_THEME = {
   // ── Colors ─────────────────────────────────────────────────
-  bg:                  '#0a1929',
-  dividerColor:        'rgba(255,255,255,0.07)',
+  bg:                  '#38573c',
+  dividerColor:        'rgba(255,255,255,0.08)',
 
-  nameText:            '#ffffff',
-  nameFontWeight:      '700',
+  nameText:            '#e4ede6',
+  nameFontWeight:      '600',
 
   setInactiveBg:       'transparent',
   setInactiveText:     'rgba(255,255,255,0.55)',
-  setActiveBg:         '#FFD700',
-  setActiveText:       '#000000',
-  setWinText:          '#ffffff',
+  setActiveBg:         '#a8c5a2',
+  setActiveText:       '#1a2e1c',
+  setWinText:          '#a8c5a2',
 
-  gameScoreBg:         '#FFD700',
-  gameScoreText:       '#000000',
-  gameScoreAdvBg:      '#FFD700',
+  gameScoreBg:         '#a8c5a2',
+  gameScoreText:       '#1a2e1c',
+  gameScoreAdvBg:      '#a8c5a2',
 
-  servingColor:        '#FFD700',
+  servingColor:        '#a8c5a2',
 
   // ── Typography ─────────────────────────────────────────────
-  fontFamily:          "system-ui, -apple-system, 'Segoe UI', sans-serif",
+  fontFamily:          "'DM Serif Display', Georgia, serif",
 
   // ── Layout ─────────────────────────────────────────────────
-  cellPaddingV:        10,    // px
+  cellPaddingV:        12,    // px
   outerRadius:         0,     // px
   cellRadius:          0,     // px
   paddingH:            0,     // px – horizontal padding inside scoreboard bg
@@ -50,8 +50,26 @@ export const DEFAULT_THEME = {
 };
 
 export const PRESETS = {
+  'Sage': {
+    // Mid forest green + muted sage — organic and botanical (default)
+    ...DEFAULT_THEME,
+  },
+
   'US Open': {
     ...DEFAULT_THEME,
+    bg:               '#0a1929',
+    dividerColor:     'rgba(255,255,255,0.07)',
+    nameText:         '#ffffff',
+    nameFontWeight:   '700',
+    setActiveBg:      '#FFD700',
+    setActiveText:    '#000000',
+    setWinText:       '#ffffff',
+    gameScoreBg:      '#FFD700',
+    gameScoreText:    '#000000',
+    gameScoreAdvBg:   '#FFD700',
+    servingColor:     '#FFD700',
+    fontFamily:       "system-ui, -apple-system, 'Segoe UI', sans-serif",
+    cellPaddingV:     10,
   },
 
   'Modern Blue': {
@@ -65,21 +83,6 @@ export const PRESETS = {
     servingColor:     '#fbbf24',
     fontFamily:       "'Space Grotesk', system-ui, sans-serif",
     cellPaddingV:     12,
-  },
-
-  'UTR Style': {
-    ...DEFAULT_THEME,
-    bg:               '#111111',
-    dividerColor:     'rgba(255,255,255,0.12)',
-    setActiveBg:      '#c8a84b',
-    setActiveText:    '#000000',
-    setWinText:       '#c8a84b',
-    gameScoreBg:      '#c8a84b',
-    gameScoreText:    '#000000',
-    servingColor:     '#c8a84b',
-    fontFamily:       "'Playfair Display', Georgia, serif",
-    subtitleVisible:  true,
-    cellPaddingV:     10,
   },
 
   'Club / Bright': {
@@ -103,26 +106,6 @@ export const PRESETS = {
   },
 
   // ── Agency-quality presets ───────────────────────────────────
-
-  'Night Court': {
-    // Charcoal + electric cyan — broadcast studio energy
-    ...DEFAULT_THEME,
-    bg:               '#111827',
-    dividerColor:     'rgba(255,255,255,0.07)',
-    nameText:         '#f1f5f9',
-    setActiveBg:      '#06b6d4',
-    setActiveText:    '#000000',
-    setWinText:       '#67e8f9',
-    gameScoreBg:      '#06b6d4',
-    gameScoreText:    '#000000',
-    servingColor:     '#06b6d4',
-    fontFamily:       "'Barlow Condensed', 'Arial Narrow', sans-serif",
-    nameFontWeight:   '700',
-    cellPaddingV:     11,
-    outerRadius:      4,
-    cellRadius:       2,
-    gameScoreGap:     4,
-  },
 
   'Heritage': {
     // Deep forest green + warm champagne — Wimbledon tradition
@@ -245,43 +228,6 @@ export const PRESETS = {
     cellRadius:       0,
   },
 
-  'Sage': {
-    // Deep forest + muted sage — organic and botanical
-    ...DEFAULT_THEME,
-    bg:               '#1a2a1c',
-    dividerColor:     'rgba(255,255,255,0.06)',
-    nameText:         '#e4ede6',
-    nameFontWeight:   '600',
-    setActiveBg:      '#a8c5a2',
-    setActiveText:    '#1a2a1c',
-    setWinText:       '#a8c5a2',
-    gameScoreBg:      '#a8c5a2',
-    gameScoreText:    '#1a2a1c',
-    servingColor:     '#a8c5a2',
-    fontFamily:       "'DM Serif Display', Georgia, serif",
-    cellPaddingV:     12,
-    outerRadius:      0,
-    cellRadius:       0,
-  },
-
-  'Cognac': {
-    // Dark espresso + warm amber — moody and sophisticated
-    ...DEFAULT_THEME,
-    bg:               '#1e0e06',
-    dividerColor:     'rgba(255,255,255,0.07)',
-    nameText:         '#f5e6d0',
-    nameFontWeight:   '600',
-    setActiveBg:      '#c4845a',
-    setActiveText:    '#1e0e06',
-    setWinText:       '#c4845a',
-    gameScoreBg:      '#c4845a',
-    gameScoreText:    '#1e0e06',
-    servingColor:     '#c4845a',
-    fontFamily:       "'Playfair Display', Georgia, serif",
-    cellPaddingV:     12,
-    outerRadius:      0,
-    cellRadius:       0,
-  },
 };
 
 export const FONT_OPTIONS = [
@@ -404,7 +350,7 @@ export function sanitizeTheme(raw) {
   const t = { ...raw };
   const { cellPaddingV, outerRadius, cellRadius, paddingH, gameScoreGap, footerGap, footerRadius } = LAYOUT_RULES;
 
-  t.cellPaddingV  = clamp(t.cellPaddingV  ?? 10, cellPaddingV.min,  cellPaddingV.max);
+  t.cellPaddingV  = clamp(t.cellPaddingV  ?? 12, cellPaddingV.min,  cellPaddingV.max);
   t.outerRadius   = clamp(t.outerRadius   ?? 0,  outerRadius.min,   outerRadius.max);
   // Cell radius must not exceed the outer radius (looks broken otherwise)
   const maxCell   = Math.min(cellRadius.max, t.outerRadius + 2);
