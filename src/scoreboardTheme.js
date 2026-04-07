@@ -22,7 +22,7 @@ export const DEFAULT_THEME = {
   fontFamily:          "'DM Serif Display', Georgia, serif",
 
   // ── Layout ─────────────────────────────────────────────────
-  cellPaddingV:        12,    // px
+  cellPaddingV:        5,    // px
   outerRadius:         0,     // px
   cellRadius:          0,     // px
   paddingH:            0,     // px – horizontal padding inside scoreboard bg
@@ -57,19 +57,18 @@ export const PRESETS = {
 
   'US Open': {
     ...DEFAULT_THEME,
-    bg:               '#0a1929',
-    dividerColor:     'rgba(255,255,255,0.07)',
-    nameText:         '#ffffff',
-    nameFontWeight:   '700',
-    setActiveBg:      '#FFD700',
-    setActiveText:    '#000000',
-    setWinText:       '#ffffff',
-    gameScoreBg:      '#FFD700',
-    gameScoreText:    '#000000',
-    gameScoreAdvBg:   '#FFD700',
-    servingColor:     '#FFD700',
-    fontFamily:       "system-ui, -apple-system, 'Segoe UI', sans-serif",
-    cellPaddingV:     10,
+    bg:               '#38573c',
+    dividerColor:     'rgba(255,255,255,0.08)',
+    nameText:         '#e4ede6',
+    nameFontWeight:   '600',
+    setActiveBg:      '#a8c5a2',
+    setActiveText:    '#1a2e1c',
+    setWinText:       '#a8c5a2',
+    gameScoreBg:      '#a8c5a2',
+    gameScoreText:    '#1a2e1c',
+    gameScoreAdvBg:   '#a8c5a2',
+    servingColor:     '#a8c5a2',
+    fontFamily:       "'DM Serif Display', Georgia, serif",
   },
 
   'Modern Blue': {
@@ -350,7 +349,7 @@ export function sanitizeTheme(raw) {
   const t = { ...raw };
   const { cellPaddingV, outerRadius, cellRadius, paddingH, gameScoreGap, footerGap, footerRadius } = LAYOUT_RULES;
 
-  t.cellPaddingV  = clamp(t.cellPaddingV  ?? 12, cellPaddingV.min,  cellPaddingV.max);
+  t.cellPaddingV  = clamp(t.cellPaddingV  ?? 5, cellPaddingV.min,  cellPaddingV.max);
   t.outerRadius   = clamp(t.outerRadius   ?? 0,  outerRadius.min,   outerRadius.max);
   // Cell radius must not exceed the outer radius (looks broken otherwise)
   const maxCell   = Math.min(cellRadius.max, t.outerRadius + 2);
