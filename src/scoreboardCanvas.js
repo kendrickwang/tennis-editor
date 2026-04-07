@@ -54,7 +54,7 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
   //   padding-top(cellPaddingV) + line-height(~1.2 × 20px font) + padding-bottom
   //   ≈ 13 + 24 + 13 = 50px for the default theme.
   // Font sizes mirror CSS: .sb__td--set and .sb__td--pt use font-size: 1.25rem (20px).
-  const ROW_H = (theme.cellPaddingV ?? 13) * 2 + 24;
+  const ROW_H = (theme.cellPaddingV ?? 10) * 2 + 24;
   const H     = ROW_H * 2;
 
   // Footer: outside main bg, with transparent gap

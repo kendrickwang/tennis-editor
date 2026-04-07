@@ -53,10 +53,10 @@ describe('sanitizeTheme — LAYOUT_RULES clamping', () => {
     });
   });
 
-  test('clamps cellPaddingV to [10, 18]', () => {
-    expect(sanitizeTheme({ cellPaddingV: 5 }).cellPaddingV).toBe(10);
+  test('clamps cellPaddingV to [5, 18]', () => {
+    expect(sanitizeTheme({ cellPaddingV: 2 }).cellPaddingV).toBe(5);
     expect(sanitizeTheme({ cellPaddingV: 25 }).cellPaddingV).toBe(18);
-    expect(sanitizeTheme({ cellPaddingV: 13 }).cellPaddingV).toBe(13);
+    expect(sanitizeTheme({ cellPaddingV: 10 }).cellPaddingV).toBe(10);
   });
 
   test('clamps outerRadius to [0, 12]', () => {
@@ -107,7 +107,7 @@ describe('sanitizeTheme — LAYOUT_RULES clamping', () => {
   test('empty / minimal input does not throw and returns valid defaults', () => {
     expect(() => sanitizeTheme({})).not.toThrow();
     const t = sanitizeTheme({});
-    expect(t.cellPaddingV).toBeGreaterThanOrEqual(10);
+    expect(t.cellPaddingV).toBeGreaterThanOrEqual(5);
     expect(t.cellPaddingV).toBeLessThanOrEqual(18);
   });
 

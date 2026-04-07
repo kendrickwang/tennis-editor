@@ -22,7 +22,7 @@ export const DEFAULT_THEME = {
   fontFamily:          "system-ui, -apple-system, 'Segoe UI', sans-serif",
 
   // ── Layout ─────────────────────────────────────────────────
-  cellPaddingV:        13,    // px
+  cellPaddingV:        10,    // px
   outerRadius:         0,     // px
   cellRadius:          0,     // px
   paddingH:            0,     // px – horizontal padding inside scoreboard bg
@@ -63,6 +63,7 @@ export const PRESETS = {
     gameScoreBg:      '#2563eb',
     gameScoreText:    '#ffffff',
     servingColor:     '#fbbf24',
+    fontFamily:       "'Space Grotesk', system-ui, sans-serif",
     cellPaddingV:     12,
   },
 
@@ -76,7 +77,7 @@ export const PRESETS = {
     gameScoreBg:      '#c8a84b',
     gameScoreText:    '#000000',
     servingColor:     '#c8a84b',
-    fontFamily:       "'Georgia', 'Times New Roman', serif",
+    fontFamily:       "'Playfair Display', Georgia, serif",
     subtitleVisible:  true,
     cellPaddingV:     10,
   },
@@ -100,27 +101,223 @@ export const PRESETS = {
     footerTextColor:  '#1e3a5f',
     footerRadius:     99,
   },
+
+  // ── Agency-quality presets ───────────────────────────────────
+
+  'Night Court': {
+    // Charcoal + electric cyan — broadcast studio energy
+    ...DEFAULT_THEME,
+    bg:               '#111827',
+    dividerColor:     'rgba(255,255,255,0.07)',
+    nameText:         '#f1f5f9',
+    setActiveBg:      '#06b6d4',
+    setActiveText:    '#000000',
+    setWinText:       '#67e8f9',
+    gameScoreBg:      '#06b6d4',
+    gameScoreText:    '#000000',
+    servingColor:     '#06b6d4',
+    fontFamily:       "'Barlow Condensed', 'Arial Narrow', sans-serif",
+    nameFontWeight:   '700',
+    cellPaddingV:     11,
+    outerRadius:      4,
+    cellRadius:       2,
+    gameScoreGap:     4,
+  },
+
+  'Heritage': {
+    // Deep forest green + warm champagne — Wimbledon tradition
+    ...DEFAULT_THEME,
+    bg:               '#1c3a2a',
+    dividerColor:     'rgba(255,255,255,0.08)',
+    nameText:         '#f5eed9',
+    setActiveBg:      '#e5d08a',
+    setActiveText:    '#1c3a2a',
+    setWinText:       '#e5d08a',
+    gameScoreBg:      '#e5d08a',
+    gameScoreText:    '#1c3a2a',
+    servingColor:     '#e5d08a',
+    fontFamily:       "'DM Serif Display', Georgia, serif",
+    nameFontWeight:   '700',
+    cellPaddingV:     12,
+    outerRadius:      0,
+    cellRadius:       0,
+  },
+
+  'Terra': {
+    // Burnt sienna + warm terracotta — clay court grit
+    ...DEFAULT_THEME,
+    bg:               '#2c1810',
+    dividerColor:     'rgba(255,255,255,0.08)',
+    nameText:         '#fff4e8',
+    setActiveBg:      '#e8793a',
+    setActiveText:    '#000000',
+    setWinText:       '#f4a261',
+    gameScoreBg:      '#e8793a',
+    gameScoreText:    '#000000',
+    servingColor:     '#f4a261',
+    fontFamily:       "'Oswald', 'Arial Narrow', sans-serif",
+    nameFontWeight:   '700',
+    cellPaddingV:     10,
+    outerRadius:      0,
+    cellRadius:       0,
+  },
+
+  'Studio': {
+    // Near-black slate + indigo + pink serve dot — editorial sports
+    ...DEFAULT_THEME,
+    bg:               '#0f172a',
+    dividerColor:     'rgba(255,255,255,0.06)',
+    nameText:         '#e2e8f0',
+    setActiveBg:      '#4f46e5',
+    setActiveText:    '#ffffff',
+    setWinText:       '#818cf8',
+    gameScoreBg:      '#4f46e5',
+    gameScoreText:    '#ffffff',
+    servingColor:     '#f472b6',
+    fontFamily:       "'Syne', system-ui, sans-serif",
+    nameFontWeight:   '700',
+    cellPaddingV:     11,
+    outerRadius:      6,
+    cellRadius:       3,
+    paddingH:         2,
+    gameScoreGap:     4,
+  },
+
+  'Pitch Black': {
+    // Pure black + periwinkle blue — stark monochrome with a single accent
+    ...DEFAULT_THEME,
+    bg:               '#000000',
+    dividerColor:     'rgba(255,255,255,0.06)',
+    nameText:         '#ffffff',
+    setActiveBg:      '#000000',
+    setActiveText:    '#ffffff',
+    setWinText:       '#6196ff',
+    gameScoreBg:      '#000000',
+    gameScoreText:    '#ffffff',
+    servingColor:     '#6196ff',
+    fontFamily:       "'Inter', system-ui, sans-serif",
+    nameFontWeight:   '700',
+    cellPaddingV:     10,
+    outerRadius:      0,
+    cellRadius:       0,
+  },
+
+  // ── Artisan / editorial presets ──────────────────────────────
+
+  'Linen': {
+    // Warm cream + espresso — Flodesk editorial warmth (light bg)
+    ...DEFAULT_THEME,
+    bg:               '#f2ead8',
+    dividerColor:     'rgba(44,31,20,0.1)',
+    nameText:         '#2c1f14',
+    nameFontWeight:   '600',
+    setInactiveBg:    'transparent',
+    setInactiveText:  'rgba(44,31,20,0.38)',
+    setActiveBg:      '#3d2b1a',
+    setActiveText:    '#f2ead8',
+    setWinText:       '#3d2b1a',
+    gameScoreBg:      '#3d2b1a',
+    gameScoreText:    '#f2ead8',
+    servingColor:     '#9c6e4a',
+    fontFamily:       "'Playfair Display', Georgia, serif",
+    cellPaddingV:     12,
+    outerRadius:      0,
+    cellRadius:       0,
+    paddingH:         2,
+  },
+
+  'Blush': {
+    // Deep dusty rose + soft blush — romantic and refined
+    ...DEFAULT_THEME,
+    bg:               '#3b1f2a',
+    dividerColor:     'rgba(255,255,255,0.07)',
+    nameText:         '#f7e8ec',
+    nameFontWeight:   '600',
+    setActiveBg:      '#e8b4c0',
+    setActiveText:    '#3b1f2a',
+    setWinText:       '#e8b4c0',
+    gameScoreBg:      '#e8b4c0',
+    gameScoreText:    '#3b1f2a',
+    servingColor:     '#e8b4c0',
+    fontFamily:       "'Cormorant Garamond', Georgia, serif",
+    cellPaddingV:     12,
+    outerRadius:      0,
+    cellRadius:       0,
+  },
+
+  'Sage': {
+    // Deep forest + muted sage — organic and botanical
+    ...DEFAULT_THEME,
+    bg:               '#1a2a1c',
+    dividerColor:     'rgba(255,255,255,0.06)',
+    nameText:         '#e4ede6',
+    nameFontWeight:   '600',
+    setActiveBg:      '#a8c5a2',
+    setActiveText:    '#1a2a1c',
+    setWinText:       '#a8c5a2',
+    gameScoreBg:      '#a8c5a2',
+    gameScoreText:    '#1a2a1c',
+    servingColor:     '#a8c5a2',
+    fontFamily:       "'DM Serif Display', Georgia, serif",
+    cellPaddingV:     12,
+    outerRadius:      0,
+    cellRadius:       0,
+  },
+
+  'Cognac': {
+    // Dark espresso + warm amber — moody and sophisticated
+    ...DEFAULT_THEME,
+    bg:               '#1e0e06',
+    dividerColor:     'rgba(255,255,255,0.07)',
+    nameText:         '#f5e6d0',
+    nameFontWeight:   '600',
+    setActiveBg:      '#c4845a',
+    setActiveText:    '#1e0e06',
+    setWinText:       '#c4845a',
+    gameScoreBg:      '#c4845a',
+    gameScoreText:    '#1e0e06',
+    servingColor:     '#c4845a',
+    fontFamily:       "'Playfair Display', Georgia, serif",
+    cellPaddingV:     12,
+    outerRadius:      0,
+    cellRadius:       0,
+  },
 };
 
 export const FONT_OPTIONS = [
+  // ── Editorial / Luxury ──────────────────────────────────────
+  { label: 'DM Serif Display',     value: "'DM Serif Display', Georgia, serif" },
+  { label: 'Playfair Display',     value: "'Playfair Display', Georgia, serif" },
+  { label: 'Cormorant Garamond',   value: "'Cormorant Garamond', Georgia, serif" },
+  { label: 'Georgia',              value: "Georgia, 'Times New Roman', serif" },
+
+  // ── Modern Sans ─────────────────────────────────────────────
+  { label: 'Space Grotesk',        value: "'Space Grotesk', system-ui, sans-serif" },
+  { label: 'Inter',                value: "'Inter', system-ui, sans-serif" },
+  { label: 'Syne',                 value: "'Syne', system-ui, sans-serif" },
   { label: 'System (default)',     value: "system-ui, -apple-system, 'Segoe UI', sans-serif" },
-  { label: 'Impact (broadcast)',   value: "Impact, 'Arial Narrow', sans-serif" },
-  { label: 'Bebas Neue',           value: "'Bebas Neue', Impact, sans-serif" },
-  { label: 'Oswald',               value: "'Oswald', 'Arial Narrow', sans-serif" },
+
+  // ── Condensed / Broadcast ───────────────────────────────────
   { label: 'Barlow Condensed',     value: "'Barlow Condensed', 'Arial Narrow', sans-serif" },
-  { label: 'Rajdhani',             value: "'Rajdhani', 'Segoe UI', sans-serif" },
+  { label: 'Oswald',               value: "'Oswald', 'Arial Narrow', sans-serif" },
   { label: 'Roboto Condensed',     value: "'Roboto Condensed', Arial, sans-serif" },
-  { label: 'Georgia (classic)',    value: "Georgia, 'Times New Roman', serif" },
-  { label: 'Arial Narrow',        value: "'Arial Narrow', Arial, sans-serif" },
-  { label: 'Verdana',             value: "Verdana, Geneva, sans-serif" },
-  { label: 'Monospace',           value: "'Courier New', Courier, monospace" },
+  { label: 'Rajdhani',             value: "'Rajdhani', 'Segoe UI', sans-serif" },
+
+  // ── Display / Graphic ───────────────────────────────────────
+  { label: 'Unbounded',            value: "'Unbounded', Impact, sans-serif" },
+  { label: 'Anton',                value: "'Anton', Impact, sans-serif" },
+  { label: 'Bebas Neue',           value: "'Bebas Neue', Impact, sans-serif" },
+  { label: 'Impact',               value: "Impact, 'Arial Narrow', sans-serif" },
+
+  // ── Monospace ───────────────────────────────────────────────
+  { label: 'Monospace',            value: "'Courier New', Courier, monospace" },
 ];
 
 // ── Design rules ────────────────────────────────────────────
 
 // Hard clamping ranges for numeric layout values
 export const LAYOUT_RULES = {
-  cellPaddingV:         { min: 10, max: 18 }, // < 10px feels cramped; > 18px scoreboard too tall
+  cellPaddingV:         { min: 5, max: 18 }, // < 5px feels cramped; > 18px scoreboard too tall
   outerRadius:          { min: 0,  max: 12 }, // > 12px looks like a pill, not a scoreboard
   cellRadius:           { min: 0,  max: 8  }, // cells should never be rounder than the container
   paddingH:             { min: 0,  max: 20 }, // horizontal padding inside scoreboard background
@@ -207,7 +404,7 @@ export function sanitizeTheme(raw) {
   const t = { ...raw };
   const { cellPaddingV, outerRadius, cellRadius, paddingH, gameScoreGap, footerGap, footerRadius } = LAYOUT_RULES;
 
-  t.cellPaddingV  = clamp(t.cellPaddingV  ?? 13, cellPaddingV.min,  cellPaddingV.max);
+  t.cellPaddingV  = clamp(t.cellPaddingV  ?? 10, cellPaddingV.min,  cellPaddingV.max);
   t.outerRadius   = clamp(t.outerRadius   ?? 0,  outerRadius.min,   outerRadius.max);
   // Cell radius must not exceed the outer radius (looks broken otherwise)
   const maxCell   = Math.min(cellRadius.max, t.outerRadius + 2);

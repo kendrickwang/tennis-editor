@@ -236,7 +236,7 @@ function toHex(color) {
 
 export function ScorePreview({ score, theme, label, scale = 0.46 }) {
   // Estimate scoreboard dimensions to size the clip wrapper correctly
-  const rowH    = (theme.cellPaddingV ?? 13) * 2 + 28;
+  const rowH    = (theme.cellPaddingV ?? 10) * 2 + 28;
   const mainH   = rowH * 2;
   const footerH = (theme.footerVisible && theme.footerText)
     ? (theme.footerGap ?? 8) + 24 : 0;

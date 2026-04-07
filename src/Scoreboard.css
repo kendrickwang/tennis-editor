@@ -37,7 +37,7 @@
 }
 
 .sb__td {
-  padding: var(--sb-cell-pad-v, 11px) 0;
+  padding: var(--sb-cell-pad-v, 10px) 0;
   text-align: center;
   vertical-align: middle;
   color: var(--sb-name-text, #ffffff);
@@ -67,7 +67,7 @@
 /* Player name */
 .sb__td--name {
   text-align: left;
-  padding: var(--sb-cell-pad-v, 11px) 14px var(--sb-cell-pad-v, 11px) 6px;
+  padding: var(--sb-cell-pad-v, 10px) 14px var(--sb-cell-pad-v, 10px) 6px;
   font-size: 1rem;
   font-weight: var(--sb-name-weight, 700);
   letter-spacing: 0.03em;
@@ -90,10 +90,7 @@
   overflow: hidden;
 }
 .sb__name-text {
-  flex-shrink: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-shrink: 0; /* never shrinks — subtitle disappears first */
   white-space: nowrap;
 }
 .sb__subtitle {
@@ -102,10 +99,7 @@
   letter-spacing: 0.04em;
   opacity: 0.75;
   text-transform: uppercase;
-  /* Collapse before the name ever truncates */
-  flex-shrink: 999;
-  min-width: 0;
-  overflow: hidden;
+  flex-shrink: 0;
   white-space: nowrap;
 }
 
