@@ -57,7 +57,7 @@ export const PRESETS = {
 
   'US Open': {
     ...DEFAULT_THEME,
-    bg:               '#0a1929',
+    bg:               '#0b0566',
     dividerColor:     'rgba(255,255,255,0.07)',
     nameText:         '#ffffff',
     nameFontWeight:   '700',
@@ -69,7 +69,7 @@ export const PRESETS = {
     gameScoreAdvBg:   '#FFD700',
     servingColor:     '#FFD700',
     fontFamily:       "system-ui, -apple-system, 'Segoe UI', sans-serif",
-    cellPaddingV:     5,
+    cellPaddingV:     10,
   },
 
   'Modern Blue': {
