@@ -27,6 +27,7 @@ export default function Scoreboard({
     '--sb-divider':          theme.dividerColor,
     '--sb-name-text':        theme.nameText,
     '--sb-name-weight':      theme.nameFontWeight,
+    '--sb-name-style':       theme.nameItalic ? 'italic' : 'normal',
     '--sb-set-inactive-bg':  theme.setInactiveBg,
     '--sb-set-inactive':     theme.setInactiveText,
     '--sb-set-active-bg':    theme.setActiveBg,

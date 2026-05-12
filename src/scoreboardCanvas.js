@@ -128,7 +128,7 @@ export function drawScoreboardToCanvas(score, names, serving = 0, theme = DEFAUL
     // Player name
     // CSS: font-size: 1rem (16px), font-weight: 700 (or T.nameFontWeight), uppercase
     ctx.fillStyle = score.matchWinner === pi + 1 ? T.servingColor : T.nameText;
-    ctx.font = `${T.nameFontWeight || 700} 16px ${T.fontFamily}`;
+    ctx.font = `${T.nameItalic ? 'italic ' : ''}${T.nameFontWeight || 700} 16px ${T.fontFamily}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(names[pi].toUpperCase(), nameOffsetX, y + ROW_H / 2);

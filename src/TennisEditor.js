@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import FeedbackModal from './FeedbackModal';
+import StatsPanel from './StatsPanel';
 import Scoreboard from './Scoreboard';
 import ScoreboardCustomizer, { ScorePreview, PREVIEW_SCORE_S1, PREVIEW_SCORE_TB } from './ScoreboardCustomizer';
 import PointTimeline from './PointTimeline';
-import VideoExporter from './VideoExporter';
+import VideoExporter, { clipStartTime } from './VideoExporter';
 import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel, recomputeScores, computeServer } from './tennisScore';
 import { canBrowserPlayNatively, transcodeToH264 } from './transcodeVideo';
 import { DEFAULT_THEME } from './scoreboardTheme';
 import { VERSION } from './version';
-import { drawScoreboardToCanvas } from './scoreboardCanvas';
 import './TennisEditor.css';
 
 function fmtTime(s) {
@@ -68,7 +69,9 @@ export default function TennisEditor() {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [volume, setVolume] = useState(1);
   const [videoGlow, setVideoGlow] = useState(null); // null | 'info' | 'success' | 'warn'
-  const [matchConfig, setMatchConfig] = useState({ noAds: false, matchTiebreak: false });
+  const [pendingFirstServe, setPendingFirstServe] = useState(null);
+  const [serveFaulted, setServeFaulted] = useState(false);
+  const [matchConfig, setMatchConfig] = useState({ noAds: false, matchTiebreak: false, serveMode: 'all-serves' });
   const [matchSettingsOpen, setMatchSettingsOpen] = useState(true);
   const [playerSetupOpen, setPlayerSetupOpen] = useState(true);
   const [pendingDelete, setPendingDelete] = useState(false);
@@ -76,25 +79,44 @@ export default function TennisEditor() {
   const [restorePrompt, setRestorePrompt] = useState(null);
   const [sampleLoading, setSampleLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [scoreboardSectionOpen, setScoreboardSectionOpen] = useState(true);
   // ID of a point that conflicts with the current recording action — highlighted in timeline
   const [conflictPointId, setConflictPointId] = useState(null);
+  // Replay mode
+  const [replayMode, setReplayMode] = useState(false);
+  const [replayPointIdx, setReplayPointIdx] = useState(0);
+  const [replayTransition, setReplayTransition] = useState('fade'); // 'cut' | 'fade'
+  const [replayFading, setReplayFading] = useState(false);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const sessionFileInputRef = useRef(null);
   const glowTimerRef = useRef(null);
-  const matchConfigRef = useRef({ noAds: false, matchTiebreak: false });
+  const matchConfigRef = useRef({ noAds: false, matchTiebreak: false, serveMode: 'all-serves' });
+  const pendingFirstServeRef = useRef(null);
+  const serveFaultedRef = useRef(false);
   const pendingDeleteRef = useRef(false);
   const deleteTimerRef = useRef(null);
   // Undo stack — each entry is { points, pendingStart } snapshot taken before
   // a destructive action. Ctrl+Z pops the top and restores.
   const undoStackRef = useRef([]);
+  // Replay mode refs
+  const replayModeRef = useRef(false);
+  const replayPointIdxRef = useRef(0);
+  const replaySortedPointsRef = useRef([]);
+  const replayTransitionRef = useRef('fade');
+  const replayAdvancingRef = useRef(false);
 
   function pushUndo() {
     undoStackRef.current = [
       ...undoStackRef.current,
-      { points: pointsRef.current, pendingStart: pendingStartRef.current },
+      {
+        points: pointsRef.current,
+        pendingStart: pendingStartRef.current,
+        pendingFirstServe: pendingFirstServeRef.current,
+        serveFaulted: serveFaultedRef.current,
+      },
     ].slice(-50); // cap at 50 steps
   }
 
@@ -132,6 +154,11 @@ export default function TennisEditor() {
   useEffect(() => { initialServerRef.current = initialServer; }, [initialServer]);
   useEffect(() => { matchConfigRef.current = matchConfig; }, [matchConfig]);
   useEffect(() => { pendingDeleteRef.current = pendingDelete; }, [pendingDelete]);
+  useEffect(() => { pendingFirstServeRef.current = pendingFirstServe; }, [pendingFirstServe]);
+  useEffect(() => { serveFaultedRef.current = serveFaulted; }, [serveFaulted]);
+  useEffect(() => { replayModeRef.current = replayMode; }, [replayMode]);
+  useEffect(() => { replayPointIdxRef.current = replayPointIdx; }, [replayPointIdx]);
+  useEffect(() => { replayTransitionRef.current = replayTransition; }, [replayTransition]);
 
   // ── Auto-save session to localStorage ──────────────────────
   // Fires whenever points change (and there's something worth saving).
@@ -179,11 +206,50 @@ export default function TennisEditor() {
     return { score: displayScore, serving: displayServing };
   }, [points, currentTime, initialServer, matchConfig]);
 
-  // Video time + play/pause tracking
+  // Video time + play/pause tracking + replay auto-advance
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const onTime  = () => setCurrentTime(video.currentTime);
+    const onTime = () => {
+      setCurrentTime(video.currentTime);
+      // Replay auto-advance
+      if (!replayModeRef.current) return;
+      if (replayAdvancingRef.current) return;
+      const sorted = replaySortedPointsRef.current;
+      const idx = replayPointIdxRef.current;
+      if (sorted.length === 0 || idx >= sorted.length) return;
+      const currentPt = sorted[idx];
+      if (video.currentTime < currentPt.endTime) return;
+
+      if (idx + 1 >= sorted.length) {
+        // Last point — pause at end
+        video.pause();
+        return;
+      }
+      replayAdvancingRef.current = true;
+      const nextIdx = idx + 1;
+      const nextPt = sorted[nextIdx];
+      const nextStart = clipStartTime(nextPt, matchConfigRef.current.serveMode);
+
+      if (replayTransitionRef.current === 'fade') {
+        setReplayFading(true);
+        setTimeout(() => {
+          video.currentTime = nextStart;
+          replayPointIdxRef.current = nextIdx;
+          setReplayPointIdx(nextIdx);
+          setTimeout(() => {
+            setReplayFading(false);
+            replayAdvancingRef.current = false;
+          }, 150);
+        }, 150);
+      } else {
+        // Cut — instant seek
+        video.currentTime = nextStart;
+        replayPointIdxRef.current = nextIdx;
+        setReplayPointIdx(nextIdx);
+        replayAdvancingRef.current = false;
+      }
+    };
     const onPlay  = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     video.addEventListener('timeupdate', onTime);
@@ -254,10 +320,10 @@ export default function TennisEditor() {
     if (sampleLoading) return;
     setSampleLoading(true);
     try {
-      const res = await fetch(`${process.env.PUBLIC_URL}/demo/demo.mp4`);
+      const res = await fetch(`${process.env.PUBLIC_URL}/demo/demo_h264.mp4`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
-      const file = new File([blob], 'demo.mp4', { type: 'video/mp4' });
+      const file = new File([blob], 'demo_h264.mp4', { type: 'video/mp4' });
       await handleFile(file);
     } catch (err) {
       console.error('[sample] failed to load demo video:', err);
@@ -302,6 +368,10 @@ export default function TennisEditor() {
       scoreRef.current = finalScore;
       setPendingStart(prev.pendingStart);
       pendingStartRef.current = prev.pendingStart;
+      setPendingFirstServe(prev.pendingFirstServe ?? null);
+      pendingFirstServeRef.current = prev.pendingFirstServe ?? null;
+      setServeFaulted(prev.serveFaulted ?? false);
+      serveFaultedRef.current = prev.serveFaulted ?? false;
       setStatus({ text: `Undone — ${restored.length} point${restored.length !== 1 ? 's' : ''}`, kind: 'info' });
       clearTimeout(glowTimerRef.current);
       setVideoGlow('info');
@@ -383,7 +453,9 @@ export default function TennisEditor() {
       return;
     }
 
-    if (!['KeyS', 'KeyE', 'KeyR'].includes(e.code)) return;
+    if (!['KeyS', 'KeyE', 'KeyR', 'KeyF', 'KeyL'].includes(e.code)) return;
+    // Recording keys disabled in replay mode
+    if (replayModeRef.current) return;
     e.preventDefault();
 
     if (e.code === 'KeyS') {
@@ -402,22 +474,168 @@ export default function TennisEditor() {
         return; // block — don't allow start inside existing point
       }
       pushUndo(); // save state so S can be undone (cancels pending start)
-      pendingStartRef.current = t;
-      setPendingStart(t);
-      setStatus({ text: `Start: ${fmtTime(t)} — now press E (P1 wins) or R (P2 wins)`, kind: 'info' });
+      const serveMode = matchConfigRef.current.serveMode;
+      if (serveMode !== 'disabled') {
+        if (serveFaultedRef.current) {
+          // S after a fault = start of 2nd serve
+          pendingStartRef.current = t;
+          setPendingStart(t);
+          setStatus({ text: `2nd serve: ${fmtTime(t)} — press F for double fault, or E/R to end`, kind: 'info' });
+        } else {
+          // S = 1st serve attempt
+          pendingFirstServeRef.current = t;
+          setPendingFirstServe(t);
+          setStatus({ text: `1st serve: ${fmtTime(t)} — press F for fault, or E/R to end`, kind: 'info' });
+        }
+      } else {
+        pendingStartRef.current = t;
+        setPendingStart(t);
+        setStatus({ text: `Start: ${fmtTime(t)} — now press E (P1 wins) or R (P2 wins)`, kind: 'info' });
+      }
       clearTimeout(glowTimerRef.current);
       setVideoGlow('info'); // persists until E or R clears it
       return;
     }
 
-    // E or R — end point
-    const ps = pendingStartRef.current;
-    if (ps === null) {
-      setStatus({ text: 'Press S first to mark the rally start', kind: 'warn' });
+    if (e.code === 'KeyF') {
+      if (matchConfigRef.current.serveMode === 'disabled') return;
+      const pfs = pendingFirstServeRef.current;
+      const faulted = serveFaultedRef.current;
+
+      if (!faulted) {
+        // 1st serve fault
+        if (pfs === null) {
+          setStatus({ text: 'Press S first to mark the 1st serve', kind: 'warn' });
+          clearTimeout(glowTimerRef.current);
+          setVideoGlow('warn');
+          glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1500);
+          return;
+        }
+        serveFaultedRef.current = true;
+        setServeFaulted(true);
+        setStatus({ text: `Fault — press S to mark 2nd serve start`, kind: 'warn' });
+        clearTimeout(glowTimerRef.current);
+        setVideoGlow('warn');
+        glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1500);
+        return;
+      }
+
+      // 2nd serve fault → double fault
+      const ps = pendingStartRef.current;
+      if (ps === null) {
+        setStatus({ text: 'Press S first to mark the 2nd serve start', kind: 'warn' });
+        clearTimeout(glowTimerRef.current);
+        setVideoGlow('warn');
+        glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1500);
+        return;
+      }
+
+      let startTime = ps;
+      let endTime = video.currentTime;
+      if (Math.abs(endTime - startTime) < 0.05) {
+        setStatus({ text: 'Move video past the double fault point first', kind: 'warn' });
+        clearTimeout(glowTimerRef.current);
+        setVideoGlow('warn');
+        glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1500);
+        return;
+      }
+      if (endTime < startTime) [startTime, endTime] = [endTime, startTime];
+
+      const rangeOverlap = findOverlap(startTime, endTime);
+      if (rangeOverlap) {
+        flashConflict(rangeOverlap.id);
+        const idx = pointsRef.current.indexOf(rangeOverlap) + 1;
+        setStatus({
+          text: `⚠ Overlaps point #${idx} (${fmtTime(rangeOverlap.startTime)}–${fmtTime(rangeOverlap.endTime)}) — point not saved`,
+          kind: 'warn',
+        });
+        clearTimeout(glowTimerRef.current);
+        setVideoGlow('warn');
+        glowTimerRef.current = setTimeout(() => setVideoGlow(null), 2000);
+        pendingStartRef.current = null; setPendingStart(null);
+        pendingFirstServeRef.current = null; setPendingFirstServe(null);
+        serveFaultedRef.current = false; setServeFaulted(false);
+        return;
+      }
+
+      // Non-server wins a double fault
+      const serverIdx = computeServer(scoreRef.current, initialServerRef.current);
+      const dfWinner = serverIdx === 0 ? 2 : 1;
+
+      pushUndo();
+      const newPt = {
+        id: Date.now(),
+        startTime,
+        endTime,
+        winner: dfWinner,
+        firstServeTime: pfs,
+        isDoubleFault: true,
+      };
+      const { points: recomputed, finalScore } = recomputeScores(
+        [...pointsRef.current, newPt],
+        initialServerRef.current,
+        matchConfigRef.current
+      );
+      setPoints(recomputed);
+      setScore(finalScore);
+      scoreRef.current = finalScore;
+      pendingStartRef.current = null; setPendingStart(null);
+      pendingFirstServeRef.current = null; setPendingFirstServe(null);
+      serveFaultedRef.current = false; setServeFaulted(false);
+
+      const inserted = recomputed.find(p => p.id === newPt.id);
+      const scoreAfterDf = addPoint(inserted.scoreBefore, dfWinner, matchConfigRef.current);
+      const dfLabel = scoreLabel(scoreAfterDf);
+      setStatus({
+        text: `Double fault — ${dfWinner === 1 ? p1NameRef.current : p2NameRef.current} wins · Score: ${dfLabel} · Games: ${scoreAfterDf.currentSet[0]}–${scoreAfterDf.currentSet[1]}`,
+        kind: 'success',
+      });
       clearTimeout(glowTimerRef.current);
-      setVideoGlow('warn');
-      glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1500);
+      setVideoGlow('success');
+      glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1200);
       return;
+    }
+
+    if (e.code === 'KeyL') {
+      // Let — cancel any pending serve / rally start and reset to idle
+      const hasPending = pendingStartRef.current !== null || pendingFirstServeRef.current !== null;
+      if (!hasPending) {
+        setStatus({ text: 'No pending start to cancel', kind: 'warn' });
+        clearTimeout(glowTimerRef.current);
+        setVideoGlow('warn');
+        glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1200);
+        return;
+      }
+      pendingStartRef.current = null; setPendingStart(null);
+      pendingFirstServeRef.current = null; setPendingFirstServe(null);
+      serveFaultedRef.current = false; setServeFaulted(false);
+      setStatus({ text: 'Let — start cancelled. Press S to begin again.', kind: 'idle' });
+      setVideoGlow(null);
+      return;
+    }
+
+    // E or R — end point
+    let ps = pendingStartRef.current;
+    if (ps === null) {
+      const serveMode = matchConfigRef.current.serveMode;
+      if (serveMode !== 'disabled' && pendingFirstServeRef.current !== null && !serveFaultedRef.current) {
+        // No-fault serve mode path: auto-promote 1st serve time as start
+        ps = pendingFirstServeRef.current;
+        pendingStartRef.current = ps;
+        setPendingStart(ps);
+      } else if (serveMode !== 'disabled' && serveFaultedRef.current) {
+        setStatus({ text: 'Press S first to mark the 2nd serve start', kind: 'warn' });
+        clearTimeout(glowTimerRef.current);
+        setVideoGlow('warn');
+        glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1500);
+        return;
+      } else {
+        setStatus({ text: 'Press S first to mark the rally start', kind: 'warn' });
+        clearTimeout(glowTimerRef.current);
+        setVideoGlow('warn');
+        glowTimerRef.current = setTimeout(() => setVideoGlow(null), 1500);
+        return;
+      }
     }
 
     let startTime = ps;
@@ -452,7 +670,14 @@ export default function TennisEditor() {
 
     const winner = e.code === 'KeyE' ? 1 : 2;
     pushUndo(); // save state before adding point
-    const newPt = { id: Date.now(), startTime, endTime, winner };
+    const newPt = {
+      id: Date.now(),
+      startTime,
+      endTime,
+      winner,
+      firstServeTime: serveFaultedRef.current ? pendingFirstServeRef.current : null,
+      isDoubleFault: false,
+    };
     const { points: recomputed, finalScore } = recomputeScores([...pointsRef.current, newPt], initialServerRef.current, matchConfigRef.current);
 
     setPoints(recomputed);
@@ -460,6 +685,10 @@ export default function TennisEditor() {
     scoreRef.current = finalScore;
     pendingStartRef.current = null;
     setPendingStart(null);
+    pendingFirstServeRef.current = null;
+    setPendingFirstServe(null);
+    serveFaultedRef.current = false;
+    setServeFaulted(false);
 
     // Find this point's scoreBefore to show the score at that moment in the video
     const inserted = recomputed.find(p => p.id === newPt.id);
@@ -486,6 +715,46 @@ export default function TennisEditor() {
     if (videoRef.current) videoRef.current.currentTime = t;
   }
 
+  // ── Replay mode ────────────────────────────────────────────
+  function enterReplay() {
+    if (points.length === 0) return;
+    const sorted = [...points].sort((a, b) => a.startTime - b.startTime);
+    replaySortedPointsRef.current = sorted;
+    replayPointIdxRef.current = 0;
+    replayAdvancingRef.current = false;
+    setReplayPointIdx(0);
+    setReplayFading(false);
+    setReplayMode(true);
+    const startT = clipStartTime(sorted[0], matchConfig.serveMode);
+    if (videoRef.current) {
+      videoRef.current.currentTime = startT;
+      videoRef.current.play();
+    }
+  }
+
+  function exitReplay() {
+    replayModeRef.current = false;
+    replayAdvancingRef.current = false;
+    setReplayMode(false);
+    setReplayFading(false);
+    if (videoRef.current) videoRef.current.pause();
+  }
+
+  function replayGoTo(idx) {
+    const sorted = replaySortedPointsRef.current;
+    if (idx < 0 || idx >= sorted.length) return;
+    const pt = sorted[idx];
+    const startT = clipStartTime(pt, matchConfigRef.current.serveMode);
+    replayAdvancingRef.current = false;
+    replayPointIdxRef.current = idx;
+    setReplayPointIdx(idx);
+    setReplayFading(false);
+    if (videoRef.current) {
+      videoRef.current.currentTime = startT;
+      videoRef.current.play();
+    }
+  }
+
   function removePoint(id) {
     pushUndo();
     const { points: recomputed, finalScore } = recomputeScores(points.filter(p => p.id !== id), initialServer, matchConfigRef.current);
@@ -502,6 +771,12 @@ export default function TennisEditor() {
     setPoints(recomputed);
     setScore(finalScore);
     scoreRef.current = finalScore;
+  }
+
+  function toggleFavorite(id) {
+    const updated = points.map(p => p.id === id ? { ...p, isFavorite: !p.isFavorite } : p);
+    setPoints(updated);
+    pointsRef.current = updated;
   }
 
   function openEditScore(pt) {
@@ -617,7 +892,7 @@ export default function TennisEditor() {
     try {
       const s = typeof session === 'string' ? JSON.parse(session) : session;
       if (!s?.points?.length) return;
-      const cfg = s.matchConfig || { noAds: false, matchTiebreak: false };
+      const cfg = { noAds: false, matchTiebreak: false, serveMode: 'all-serves', ...(s.matchConfig || {}) };
       const srv = s.initialServer ?? 0;
       setP1Name(s.p1Name || 'Player 1');
       setP2Name(s.p2Name || 'Player 2');
@@ -635,39 +910,15 @@ export default function TennisEditor() {
     }
   }
 
-  // ── Capture frame ──────────────────────────────────────────
-  function captureFrame() {
-    const videoEl = videoRef.current;
-    if (!videoEl || !videoEl.videoWidth) return;
-    const canvas = document.createElement('canvas');
-    canvas.width  = videoEl.videoWidth;
-    canvas.height = videoEl.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-    const sbCanvas = drawScoreboardToCanvas(
-      displayState.score,
-      [p1Name, p2Name],
-      displayState.serving,
-      scoreboardTheme
-    );
-    const margin = Math.round(canvas.height * 0.025);
-    // sbCanvas renders at 2×; divide by 2 to get CSS-pixel size
-    ctx.drawImage(sbCanvas, margin, margin, sbCanvas.width / 2, sbCanvas.height / 2);
-    canvas.toBlob(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${fileName || 'thumbnail'}-${fmtTime(currentTime).replace(/:/g, '-')}.jpg`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }, 'image/jpeg', 0.92);
-  }
 
   // ── Render ─────────────────────────────────────────────────
   return (
     <div className={`te${videoSrc ? ' te--workspace' : ''}`}>
       {showHelp && (
         <HelpModal names={[p1Name, p2Name]} onAccept={() => setShowHelp(false)} />
+      )}
+      {showFeedback && (
+        <FeedbackModal onClose={() => setShowFeedback(false)} />
       )}
       {!videoSrc && <h1 className="te__title">Court Clipper <span className="te__version">v{VERSION}</span></h1>}
 
@@ -716,11 +967,18 @@ export default function TennisEditor() {
       ) : (
         <div className="te__workspace">
           {/* Top bar */}
-          <div className="te__topbar">
+          <div className={`te__topbar${!replayMode ? (sidebarOpen ? ' te__topbar--sidebar-open' : ' te__topbar--sidebar-collapsed') : ''}`}>
             <span className="te__topbar-logo">Court Clipper <span className="te__version">v{VERSION}</span></span>
             <span className="te__topbar-file">🎬 {fileName}</span>
             <div className="te__topbar-sep" />
-            <button className="te__topbar-btn" onClick={() => setShowHelp(true)} title="How to use">?</button>
+            <button className="te__topbar-btn" onClick={() => setShowHelp(true)} title="How to use">Help</button>
+            <button className="te__topbar-btn te__topbar-btn--feedback" onClick={() => setShowFeedback(true)} title="Share feedback">💬 Give feedback on the app</button>
+            <button
+              className={`te__topbar-btn te__topbar-btn--replay${replayMode ? ' te__topbar-btn--replay-active' : ''}`}
+              onClick={replayMode ? exitReplay : enterReplay}
+              disabled={points.length === 0}
+              title={points.length === 0 ? 'Record at least one point to use replay' : 'Replay mode — jumps between points, cuts dead time'}
+            >{replayMode ? '✕ Exit Replay Mode' : '▶ Replay Mode'}</button>
             <label className="te__topbar-btn" title="Restore edits from a saved session file">
               ↑ Load
               <input ref={sessionFileInputRef} type="file" accept=".json,application/json"
@@ -737,10 +995,10 @@ export default function TennisEditor() {
             <button className="te__topbar-btn" onClick={() => fileInputRef.current.click()}>Change video</button>
             <input ref={fileInputRef} type="file" accept="video/*"
               onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
-            <div className="te__topbar-spacer" />
             {points.length > 0 && (
-              <button className="te__topbar-btn" onClick={saveSession} title="Download edits as a JSON backup">↓ Save</button>
+              <button className="te__topbar-btn" onClick={saveSession} title="Download edits as a JSON backup">↓ Save your progress</button>
             )}
+            <div className="te__topbar-spacer" />
           </div>
 
           {/* Two-column body: content + sidebar */}
@@ -762,15 +1020,48 @@ export default function TennisEditor() {
 
           {/* Video area — hints float left via absolute, video fills full width */}
           <div className="te__video-area">
-          <div className="te__hints">
-            <div className="te__hint-pill"><kbd>Space</kbd><span>Play / Pause</span></div>
-            <div className="te__hint-pill"><kbd>←</kbd><kbd>→</kbd><span>±3 sec</span></div>
-            <div className="te__hint-pill te__hint-pill--s"><kbd>S</kbd><span>Mark start</span></div>
-            <div className="te__hint-pill te__hint-pill--e"><kbd>E</kbd><span>P1 wins</span></div>
-            <div className="te__hint-pill te__hint-pill--r"><kbd>R</kbd><span>P2 wins</span></div>
-            <div className="te__hint-pill"><kbd>Del</kbd><kbd>Del</kbd><span>Delete last</span></div>
-            <div className="te__hint-pill"><kbd>⌘Z</kbd><span>Undo</span></div>
-          </div>
+          {replayMode ? (
+            <div className="te__replay-controls">
+              <button
+                className="te__replay-nav-btn"
+                onClick={() => replayGoTo(replayPointIdx - 1)}
+                disabled={replayPointIdx === 0}
+                title="Previous point"
+              >← Prev</button>
+              <span className="te__replay-counter">
+                Point <strong>{replayPointIdx + 1}</strong> / {replaySortedPointsRef.current.length}
+              </span>
+              <button
+                className="te__replay-nav-btn"
+                onClick={() => replayGoTo(replayPointIdx + 1)}
+                disabled={replayPointIdx >= replaySortedPointsRef.current.length - 1}
+                title="Next point"
+              >Next →</button>
+              <div className="te__replay-sep" />
+              <button
+                className={`te__replay-trans-btn${replayTransition === 'cut' ? ' te__replay-trans-btn--active' : ''}`}
+                onClick={() => setReplayTransition('cut')}
+              >Cut</button>
+              <button
+                className={`te__replay-trans-btn${replayTransition === 'fade' ? ' te__replay-trans-btn--active' : ''}`}
+                onClick={() => setReplayTransition('fade')}
+              >Fade</button>
+              <div className="te__replay-spacer" />
+              <button className="te__replay-exit-btn" onClick={exitReplay}>✕ Exit Replay Mode</button>
+            </div>
+          ) : (
+            <div className="te__hints">
+              <div className="te__hint-pill"><kbd>Space</kbd><span>Play / Pause</span></div>
+              <div className="te__hint-pill"><kbd>←</kbd><kbd>→</kbd><span>±3 sec</span></div>
+              <div className="te__hint-pill te__hint-pill--s"><kbd>S</kbd><span>Mark start of a point or rally</span></div>
+              <div className="te__hint-pill te__hint-pill--f"><kbd>F</kbd><span>Fault</span></div>
+              <div className="te__hint-pill te__hint-pill--l"><kbd>L</kbd><span>Let</span></div>
+              <div className="te__hint-pill te__hint-pill--e"><kbd>E</kbd><span>Player 1 wins point</span></div>
+              <div className="te__hint-pill te__hint-pill--r"><kbd>R</kbd><span>Player 2 wins point</span></div>
+              <div className="te__hint-pill"><kbd>Del</kbd><kbd>Del</kbd><span>Delete the last point</span></div>
+              <div className="te__hint-pill"><kbd>⌘Z</kbd><span>Undo</span></div>
+            </div>
+          )}
 
           {/* Video + scoreboard overlay + custom controls */}
           <div
@@ -783,6 +1074,8 @@ export default function TennisEditor() {
               className="te__video"
               onLoadedMetadata={() => setDuration(videoRef.current.duration)}
             />
+            {/* Replay fade overlay */}
+            <div className={`te__replay-fade${replayFading ? ' te__replay-fade--visible' : ''}`} />
             <div className="te__sb-overlay">
               <Scoreboard
                 score={displayState.score}
@@ -862,9 +1155,17 @@ export default function TennisEditor() {
           </div>{/* end te__video-area */}
 
           {/* Status bar — only rendered when there's something to show */}
-          {(status.text || pendingStart !== null) && (
+          {(status.text || pendingStart !== null || pendingFirstServe !== null) && (
             <div className={`te__status te__status--${status.kind}`}>
-              {pendingStart !== null && (
+              {pendingFirstServe !== null && (
+                <span className="te__status-marker">
+                  ● 1st serve: {fmtTime(pendingFirstServe)}{serveFaulted ? ' · FAULT' : ''}
+                </span>
+              )}
+              {pendingStart !== null && pendingFirstServe !== null && serveFaulted && (
+                <span className="te__status-marker">● 2nd serve: {fmtTime(pendingStart)}</span>
+              )}
+              {pendingStart !== null && pendingFirstServe === null && (
                 <span className="te__status-marker">● Start: {fmtTime(pendingStart)}</span>
               )}
               {status.text}
@@ -886,7 +1187,14 @@ export default function TennisEditor() {
           {points.length > 0 && (
             <div className="te__points-list">
               <div className="te__points-header">
-                <span>Recorded points</span>
+                <span>
+                  Recorded points
+                  {points.some(p => p.isFavorite) && (
+                    <span className="te__fav-count" title="Favorited points">
+                      &nbsp;· ★ {points.filter(p => p.isFavorite).length}
+                    </span>
+                  )}
+                </span>
                 <button className="te__clear-btn" onClick={() => setShowClearConfirm(true)}>Clear all</button>
               </div>
               {showClearConfirm && (
@@ -944,7 +1252,11 @@ export default function TennisEditor() {
                           <span className="te__point-game-score">{gameScoreLabel(pt.scoreBefore)}</span>
                           <span className="te__point-pt-score">{scoreLabel(pt.scoreBefore)}</span>
                         </span>
-                        <span className="te__point-time">{fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}</span>
+                        <span className="te__point-time">
+                          {fmtTime(pt.startTime)} – {fmtTime(pt.endTime)}
+                          {pt.isDoubleFault && <span className="te__badge te__badge--df" title="Double fault">DF</span>}
+                          {!pt.isDoubleFault && pt.firstServeTime != null && <span className="te__badge te__badge--2s" title="Started on 2nd serve">2S</span>}
+                        </span>
                         <span className="te__point-menu-wrap">
                           <button
                             className="te__point-menu-btn"
@@ -973,6 +1285,11 @@ export default function TennisEditor() {
                         >
                           {pt.winner === 1 ? p1Name : p2Name} ⇄
                         </button>
+                        <button
+                          className={`te__point-star${pt.isFavorite ? ' te__point-star--active' : ''}`}
+                          onClick={e => { e.stopPropagation(); toggleFavorite(pt.id); }}
+                          title={pt.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                        >{pt.isFavorite ? '★' : '☆'}</button>
                         <button className="te__point-del" onClick={e => { e.stopPropagation(); removePoint(pt.id); }} title="Remove">×</button>
                       </div>
                       {editScoreId === pt.id && editScoreDraft && (
@@ -1087,28 +1404,34 @@ export default function TennisEditor() {
             </div>
           )}
 
+          <StatsPanel
+            points={points}
+            names={[p1Name, p2Name]}
+            matchConfig={matchConfig}
+          />
+
           </div>{/* end te__content */}
 
           {/* ── Persistent settings sidebar ──────── */}
-          <div className={`te__sidebar${sidebarOpen ? '' : ' te__sidebar--collapsed'}`}>
+          {!replayMode && <div className={`te__sidebar${sidebarOpen ? '' : ' te__sidebar--collapsed'}`}>
             <div className="te__sidebar-body">
 
-              {/* Players section */}
+              {/* Combined Settings section */}
               <div className="te__sb-section">
                 <button
                   className="te__sb-section-hdr"
-                  onClick={() => sidebarOpen ? setPlayerSetupOpen(o => !o) : setSidebarOpen(true)}
-                  title="Players"
+                  onClick={() => sidebarOpen ? setMatchSettingsOpen(o => !o) : setSidebarOpen(true)}
+                  title="Settings"
                 >
                   <span className="te__sb-icon">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
                   </span>
-                  {sidebarOpen && <span className="te__sb-label">Players</span>}
-                  {sidebarOpen && <span className="te__sb-chevron">{playerSetupOpen
+                  {sidebarOpen && <span className="te__sb-label">Settings</span>}
+                  {sidebarOpen && <span className="te__sb-chevron">{matchSettingsOpen
                     ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
                     : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>}</span>}
                 </button>
-                {sidebarOpen && playerSetupOpen && (
+                {sidebarOpen && matchSettingsOpen && (
                   <div className="te__sb-section-body">
                     <div className="te__names te__names--panel">
                       <div className="te__name-field te__name-field--p1">
@@ -1124,51 +1447,48 @@ export default function TennisEditor() {
                         <label htmlFor="p2-name-sb">Player/Team 2</label>
                       </div>
                     </div>
-                    <div className="te__serve-picker">
-                      <span className="te__serve-picker-label">Serves first</span>
-                      <button className={`te__serve-pill te__serve-pill--p1${initialServer === 0 ? ' te__serve-pill--active' : ''}`}
-                        onClick={() => setInitialServer(0)}>🎾 {p1Name}</button>
-                      <button className={`te__serve-pill te__serve-pill--p2${initialServer === 1 ? ' te__serve-pill--active' : ''}`}
-                        onClick={() => setInitialServer(1)}>🎾 {p2Name}</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Match Settings section */}
-              <div className="te__sb-section">
-                <button
-                  className="te__sb-section-hdr"
-                  onClick={() => sidebarOpen ? setMatchSettingsOpen(o => !o) : setSidebarOpen(true)}
-                  title="Match Settings"
-                >
-                  <span className="te__sb-icon">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-                  </span>
-                  {sidebarOpen && <span className="te__sb-label">Match Settings</span>}
-                  {sidebarOpen && <span className="te__sb-chevron">{matchSettingsOpen
-                    ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-                    : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>}</span>}
-                </button>
-                {sidebarOpen && matchSettingsOpen && (
-                  <div className="te__sb-section-body">
+                    {/* Serves first — dropdown */}
                     <div className="te__setting-row">
-                      <span className="te__setting-row-label">3rd Set</span>
-                      <div className="te__setting-pills">
-                        <button className={`te__setting-pill${!matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                      <span className="te__setting-row-label">Serves first</span>
+                      <select
+                        className="te__setting-select"
+                        value={initialServer}
+                        onChange={e => setInitialServer(Number(e.target.value))}
+                      >
+                        <option value={0}>🎾 {p1Name}</option>
+                        <option value={1}>🎾 {p2Name}</option>
+                      </select>
+                    </div>
+                    <div className="te__sb-divider" />
+                    {/* 3rd Set — label above, full-width segmented */}
+                    <div className="te__setting-stacked">
+                      <span className="te__setting-stacked-label">3rd Set</span>
+                      <div className="te__setting-seg">
+                        <button
+                          className={`te__setting-seg-btn${!matchConfig.matchTiebreak ? ' te__setting-seg-btn--active' : ''}`}
                           onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: false }))}>Full Set</button>
-                        <button className={`te__setting-pill${matchConfig.matchTiebreak ? ' te__setting-pill--active' : ''}`}
+                        <button
+                          className={`te__setting-seg-btn${matchConfig.matchTiebreak ? ' te__setting-seg-btn--active' : ''}`}
                           onClick={() => setMatchConfig(c => ({ ...c, matchTiebreak: true }))}>Match Tiebreak</button>
                       </div>
                     </div>
+                    {/* Scoring — toggle */}
                     <div className="te__setting-row">
-                      <span className="te__setting-row-label">Scoring</span>
-                      <div className="te__setting-pills">
-                        <button className={`te__setting-pill${!matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
-                          onClick={() => setMatchConfig(c => ({ ...c, noAds: false }))}>Ads</button>
-                        <button className={`te__setting-pill${matchConfig.noAds ? ' te__setting-pill--active' : ''}`}
-                          onClick={() => setMatchConfig(c => ({ ...c, noAds: true }))}>No-Ads</button>
-                      </div>
+                      <span className="te__setting-row-label">No-Ads scoring</span>
+                      <label className="te__toggle">
+                        <input type="checkbox" checked={matchConfig.noAds}
+                          onChange={e => setMatchConfig(c => ({ ...c, noAds: e.target.checked }))} />
+                        <span className="te__toggle-track" />
+                      </label>
+                    </div>
+                    {/* Track serve faults — toggle */}
+                    <div className="te__setting-row">
+                      <span className="te__setting-row-label">Track serve faults</span>
+                      <label className="te__toggle">
+                        <input type="checkbox" checked={matchConfig.serveMode === 'all-serves'}
+                          onChange={e => setMatchConfig(c => ({ ...c, serveMode: e.target.checked ? 'all-serves' : 'disabled' }))} />
+                        <span className="te__toggle-track" />
+                      </label>
                     </div>
                   </div>
                 )}
@@ -1192,7 +1512,6 @@ export default function TennisEditor() {
                 {sidebarOpen && scoreboardSectionOpen && (
                   <div className="te__sb-section-body">
                     <button className="te__customize-btn" onClick={() => setShowCustomizer(true)}>✦ Customize scoreboard</button>
-                    <button className="te__capture-btn" onClick={captureFrame} title="Download current frame with scoreboard as JPEG">📷 Capture frame</button>
                   </div>
                 )}
               </div>
@@ -1219,6 +1538,7 @@ export default function TennisEditor() {
                       names={[p1Name, p2Name]}
                       serving={serving}
                       scoreboardTheme={scoreboardTheme}
+                      matchConfig={matchConfig}
                     />
                   </div>
                 )}
@@ -1241,7 +1561,7 @@ export default function TennisEditor() {
               </svg>
               {sidebarOpen && <span>Minimize</span>}
             </button>
-          </div>
+          </div>}
 
           </div>{/* end te__body */}
 
@@ -1294,13 +1614,13 @@ function HelpModal({ names, onAccept }) {
         <div className="te__modal-header">
           <span className="te__modal-icon">🎾</span>
           <h2 id="modal-title" className="te__modal-title">How to use the editor</h2>
-          <p className="te__modal-sub">Tag every point in your match video using just three keys</p>
+          <p className="te__modal-sub">Tag every point in your match video using just a few simple keys</p>
         </div>
 
         <div className="te__modal-keys">
           <div className="te__modal-key">
             <kbd className="te__modal-kbd">S</kbd>
-            <span>Mark <strong>start</strong> of rally</span>
+            <span>Mark <strong>start</strong> of rally (or 1st serve)</span>
           </div>
           <div className="te__modal-key">
             <kbd className="te__modal-kbd te__modal-kbd--p1">E</kbd>
@@ -1309,6 +1629,14 @@ function HelpModal({ names, onAccept }) {
           <div className="te__modal-key">
             <kbd className="te__modal-kbd te__modal-kbd--p2">R</kbd>
             <span><strong>{p2}</strong> wins the point</span>
+          </div>
+          <div className="te__modal-key te__modal-key--secondary">
+            <kbd className="te__modal-kbd">F</kbd>
+            <span>Fault — then press S to start 2nd serve <span className="te__modal-key-note">(serve tracking on)</span></span>
+          </div>
+          <div className="te__modal-key te__modal-key--secondary">
+            <kbd className="te__modal-kbd">L</kbd>
+            <span>Let — marks the last serve as a let</span>
           </div>
         </div>
 
@@ -1327,7 +1655,7 @@ function HelpModal({ names, onAccept }) {
           </li>
           <li>
             <span className="te__modal-step-num">4</span>
-            <span>Repeat through the whole video, then hit <strong>Export</strong> to download every point as a clip</span>
+            <span>Tag every point in the match, then hit <strong>Export</strong> to download a single highlight video with a live scoreboard overlay</span>
           </li>
         </ol>
 

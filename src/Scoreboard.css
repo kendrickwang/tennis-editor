@@ -70,6 +70,7 @@
   padding: var(--sb-cell-pad-v, 10px) 14px var(--sb-cell-pad-v, 10px) 6px;
   font-size: 1rem;
   font-weight: var(--sb-name-weight, 700);
+  font-style: var(--sb-name-style, normal);
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--sb-name-text, #ffffff);

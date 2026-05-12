@@ -1,0 +1,92 @@
+/* ── Stats Panel ──────────────────────────────────────────────── */
+.sp__panel {
+  margin-top: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.sp__title {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.sp__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* Column headers */
+.sp__th {
+  padding: 10px 16px;
+  font-weight: 700;
+  font-size: 13px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+.sp__th--label {
+  text-align: left;
+  width: 46%;
+  color: var(--text-2);
+}
+.sp__th--p1 {
+  color: var(--p1);
+  width: 27%;
+}
+.sp__th--p2 {
+  color: var(--p2);
+  width: 27%;
+}
+
+/* Section headers */
+.sp__section-header td {
+  padding: 8px 16px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+}
+
+/* Data rows — no zebra striping; grey reserved for section headers only */
+
+.sp__label {
+  padding: 9px 16px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.sp__val {
+  padding: 9px 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
+}
+.sp__val--p1 {
+  color: var(--p1);
+}
+.sp__val--p2 {
+  color: var(--p2);
+}
+
+/* Serve-off notice */
+.sp__serve-off {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-2);
+  text-align: center;
+}
+.sp__serve-off strong {
+  color: var(--text);
+}

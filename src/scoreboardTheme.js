@@ -5,6 +5,7 @@ export const DEFAULT_THEME = {
 
   nameText:            '#e4ede6',
   nameFontWeight:      '600',
+  nameItalic:          false,
 
   setInactiveBg:       'transparent',
   setInactiveText:     'rgba(255,255,255,0.55)',

@@ -367,6 +367,21 @@ export default function ScoreboardCustomizer({ theme, onChange, embedded = false
             ))}
           </select>
         </div>
+        <div className="sbc__row">
+          <label className="sbc__label">Style</label>
+          <div className="sbc__style-btns">
+            <button
+              className={`sbc__style-btn${theme.nameFontWeight === '700' || theme.nameFontWeight === 700 ? ' sbc__style-btn--active' : ''}`}
+              onClick={() => set('nameFontWeight', theme.nameFontWeight === '700' || theme.nameFontWeight === 700 ? '400' : '700')}
+              title="Bold"
+            ><strong>B</strong></button>
+            <button
+              className={`sbc__style-btn${theme.nameItalic ? ' sbc__style-btn--active' : ''}`}
+              onClick={() => set('nameItalic', !theme.nameItalic)}
+              title="Italic"
+            ><em>I</em></button>
+          </div>
+        </div>
       </Section>
 
       {/* ── Layout ──────────────────────────────── */}

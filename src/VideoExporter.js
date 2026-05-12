@@ -49,6 +49,16 @@ export function buildFilterComplex(sf, sbPx) {
   return `${sbFilter};[0:v][sb]overlay=14:14[vout]`;
 }
 
+// Returns the clip start time for a point, accounting for serve mode.
+// In 'all-serves' mode, clips start from the 1st serve attempt.
+// In 'points-only' mode, double faults start from the 1st serve; all other points start normally.
+export function clipStartTime(pt, serveMode) {
+  if (!serveMode || serveMode === 'disabled') return pt.startTime;
+  if (serveMode === 'all-serves' && pt.firstServeTime != null) return pt.firstServeTime;
+  if (serveMode === 'points-only' && pt.isDoubleFault && pt.firstServeTime != null) return pt.firstServeTime;
+  return pt.startTime;
+}
+
 // Probe the natural dimensions of a video File using the browser's video
 // element — free, no FFmpeg required.
 export function probeVideoDimensions(videoFile) {
@@ -65,19 +75,22 @@ export function probeVideoDimensions(videoFile) {
   });
 }
 
-export default function VideoExporter({ videoFile, points, fileName, names = ['P1', 'P2'], serving = 0, scoreboardTheme }) {
+export default function VideoExporter({ videoFile, points, fileName, names = ['P1', 'P2'], serving = 0, scoreboardTheme, matchConfig }) {
   const [phase, setPhase] = useState('idle');
   const [progress, setProgress] = useState(0);
   const [stepLabel, setStepLabel] = useState('');
   const [secsLeft, setSecsLeft] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
-  const [showScoreboard, setShowScoreboard] = useState(false);
+  const [showScoreboard, setShowScoreboard] = useState(true);
   const [outputRes, setOutputRes] = useState('720');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   const startedAt = useRef(null);
   const phaseRef = useRef('idle');
 
-  const canExport = Boolean(videoFile && points.length > 0);
+  const favoriteCount = points.filter(p => p.isFavorite).length;
+  const ptsToExport = favoritesOnly ? points.filter(p => p.isFavorite) : points;
+  const canExport = Boolean(videoFile && ptsToExport.length > 0);
   const isRunning = phase === 'loading' || phase === 'working';
 
   function tick(prog) {
@@ -115,21 +128,21 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
       // ── 2. Spin up workers and process clips in parallel ─────────────────
       // Divide points into contiguous chunks — each worker seeks forward
       // through its own portion of the video, minimising seek distance.
-      const workers = Math.min(PARALLEL, points.length);
-      const chunkSize = Math.ceil(points.length / workers);
+      const workers = Math.min(PARALLEL, ptsToExport.length);
+      const chunkSize = Math.ceil(ptsToExport.length / workers);
       const chunks = Array.from({ length: workers }, (_, wi) => {
         const start = wi * chunkSize;
-        return points
+        return ptsToExport
           .slice(start, start + chunkSize)
           .map((pt, j) => ({ pt, idx: start + j }));
       }).filter(c => c.length > 0);
 
       // segDataByIdx[i] will hold the Uint8Array for clip i once encoded
-      const segDataByIdx = new Array(points.length);
+      const segDataByIdx = new Array(ptsToExport.length);
       let completedClips = 0;
 
       tick(0.05);
-      setStepLabel(`Extracting clips… 0 / ${points.length}`);
+      setStepLabel(`Extracting clips… 0 / ${ptsToExport.length}`);
 
       const sf = showScoreboard ? scaleFilter(outputRes) : null;
 
@@ -164,7 +177,7 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
             const fc = buildFilterComplex(sf, sbPx);
 
             await ff.exec([
-              '-ss', pt.startTime.toFixed(3),
+              '-ss', clipStartTime(pt, matchConfig?.serveMode).toFixed(3),
               '-to', pt.endTime.toFixed(3),
               '-i', '/input/video.mp4',
               '-i', 'overlay.png',
@@ -188,7 +201,7 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
           } else {
             // No scoreboard — stream-copy (no re-encode, very fast)
             await ff.exec([
-              '-ss', pt.startTime.toFixed(3),
+              '-ss', clipStartTime(pt, matchConfig?.serveMode).toFixed(3),
               '-to', pt.endTime.toFixed(3),
               '-i', '/input/video.mp4',
               '-c', 'copy',
@@ -203,8 +216,8 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
           // completedClips++ is safe: JS is single-threaded; async callbacks
           // from multiple workers interleave on the main thread without races.
           completedClips++;
-          tick(0.05 + (completedClips / points.length) * 0.60);
-          setStepLabel(`Extracting clips… ${completedClips} / ${points.length}`);
+          tick(0.05 + (completedClips / ptsToExport.length) * 0.60);
+          setStepLabel(`Extracting clips… ${completedClips} / ${ptsToExport.length}`);
         }
 
         await ff.unmount('/input');
@@ -226,8 +239,8 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
       for (let i = 0; i < segDataByIdx.length; i++) {
         await concatFF.writeFile(`seg${i}.mp4`, segDataByIdx[i]);
         // Null out the JS reference immediately after writing to the WASM FS
-        // so the GC can reclaim it. Without this, all 110 clips (~400 MB) sit
-        // in both JS memory and the WASM heap simultaneously.
+        // so the GC can reclaim it. Without this, all clips sit in both JS
+        // memory and the WASM heap simultaneously.
         segDataByIdx[i] = null;
       }
       const manifest = segDataByIdx.map((_, i) => `file 'seg${i}.mp4'`).join('\n');
@@ -299,6 +312,19 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
         {showScoreboard && <span className="exp__toggle-note">re-encodes — slower</span>}
       </label>
 
+      <label className={`exp__toggle${favoriteCount === 0 ? ' exp__toggle--disabled' : ''}`}>
+        <input
+          type="checkbox"
+          checked={favoritesOnly}
+          onChange={e => setFavoritesOnly(e.target.checked)}
+          disabled={isRunning || favoriteCount === 0}
+        />
+        <span>Favorites only</span>
+        {favoriteCount > 0
+          ? <span className="exp__toggle-note exp__toggle-note--fav">★ {favoriteCount} of {points.length}</span>
+          : <span className="exp__toggle-note">star points to enable</span>}
+      </label>
+
       {showScoreboard && (
         <div className="exp__option">
           <span className="exp__option-label">Output resolution</span>
@@ -328,7 +354,7 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
         >
           {phase === 'done'
             ? '✓ Exported — Export Again'
-            : `⬇ Export Video${points.length > 0 ? ` (${points.length} clip${points.length !== 1 ? 's' : ''} → 1 file)` : ''}`}
+            : `⬇ Export Video${ptsToExport.length > 0 ? ` (${ptsToExport.length} clip${ptsToExport.length !== 1 ? 's' : ''} → 1 file)` : ''}`}
         </button>
       )}
 
