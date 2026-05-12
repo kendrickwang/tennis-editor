@@ -316,15 +316,33 @@ export default function TennisEditor() {
   }
 
   // ── Sample video loader ────────────────────────────────────
+  // Bypasses the codec probe — we know demo_h264.mp4 is H.264 and plays natively.
+  // Sets the video src directly from the URL (no full download needed to start playing),
+  // then fetches the blob in the background so export works once it's ready.
   async function loadSampleVideo() {
     if (sampleLoading) return;
     setSampleLoading(true);
+    const sampleUrl = `${process.env.PUBLIC_URL}/demo/demo_h264.mp4`;
     try {
-      const res = await fetch(`${process.env.PUBLIC_URL}/demo/demo_h264.mp4`);
+      // Reset match state (mirrors what handleFile does)
+      setDuration(0);
+      setScore(INITIAL_SCORE);
+      setInitialServer(0);
+      setPoints([]);
+      setPendingStart(null);
+      setFileName('demo_h264.mp4');
+      setTranscodeProgress(null);
+      setRestorePrompt(null);
+
+      // Stream directly from URL — no 77 MB download before first frame
+      setVideoSrc(prev => { if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev); return sampleUrl; });
+      setStatus({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
+
+      // Fetch blob in background so VideoExporter has the file data when needed
+      const res = await fetch(sampleUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
-      const file = new File([blob], 'demo_h264.mp4', { type: 'video/mp4' });
-      await handleFile(file);
+      setVideoFile(new File([blob], 'demo_h264.mp4', { type: 'video/mp4' }));
     } catch (err) {
       console.error('[sample] failed to load demo video:', err);
     } finally {
