@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, protocol, net } = require('electron');
 const path  = require('path');
 const fs    = require('fs');
 const os    = require('os');
@@ -8,6 +8,12 @@ const { spawn, execSync } = require('child_process');
 const { getFfmpegPath } = require('./ffmpeg');
 
 const isDev = !app.isPackaged;
+
+// Must be called before app is ready — marks 'media' as a secure, streamable
+// scheme so <video> and fetch() in the renderer can use it with range requests.
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'media', privileges: { secure: true, supportFetchAPI: true, stream: true, bypassCSP: true, corsEnabled: true } },
+]);
 
 // ── Window ───────────────────────────────────────────────────────────────────
 
@@ -33,7 +39,18 @@ function createWindow() {
   }
 }
 
+// ── Custom media:// protocol ──────────────────────────────────────────────────
+// The renderer may be loaded from http://localhost:3000 (dev) which blocks
+// file:// access via the browser security model.  We register a privileged
+// 'media' protocol that proxies to file:// so <video> can stream local files
+// including range requests (needed for seeking).
 app.whenReady().then(() => {
+  protocol.handle('media', (request) => {
+    // media:///abs/path/to/file.mp4  →  file:///abs/path/to/file.mp4
+    const fileUrl = request.url.replace(/^media:\/\//, 'file://');
+    return net.fetch(fileUrl, { bypassCustomProtocolHandlers: true });
+  });
+
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

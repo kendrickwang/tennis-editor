@@ -289,8 +289,10 @@ export default function TennisEditor() {
       }
     } catch (_) {}
 
-    // file:// URLs work directly in Electron's Chromium for any codec
-    setVideoSrc(prev => { if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev); return `file://${absolutePath}`; });
+    // Use the custom media:// protocol — file:// is blocked from http:// origins (dev mode).
+    // Encode each path segment so spaces and special chars in filenames work.
+    const encodedPath = absolutePath.split('/').map(encodeURIComponent).join('/');
+    setVideoSrc(prev => { if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev); return `media://${encodedPath}`; });
     setStatus({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
   }
 
@@ -382,6 +384,7 @@ export default function TennisEditor() {
 
       // Stream directly from URL — no 77 MB download before first frame
       setVideoSrc(prev => { if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev); return sampleUrl; });
+      setVideoFilePath(null);
       setStatus({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
 
       // Fetch blob in background so VideoExporter has the file data when needed
