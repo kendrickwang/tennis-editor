@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { toBlobURL } from '@ffmpeg/util';
 import { drawScoreboardToCanvas, canvasToUint8Array } from './scoreboardCanvas';
+import { isElectron } from './utils/platform';
 import './VideoExporter.css';
 
 // Maximum parallel FFmpeg workers. Each worker needs ~50 MB (32 MB WASM heap +
@@ -59,23 +60,29 @@ export function clipStartTime(pt, serveMode) {
   return pt.startTime;
 }
 
-// Probe the natural dimensions of a video File using the browser's video
-// element — free, no FFmpeg required.
-export function probeVideoDimensions(videoFile) {
+// Probe the natural dimensions of a video using the browser's video element.
+// Accepts a File/Blob or a src string (e.g. file:// URL for Electron).
+export function probeVideoDimensions(videoFileOrSrc) {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
     video.preload = 'metadata';
+    let objectUrl = null;
     video.onloadedmetadata = () => {
       const { videoWidth, videoHeight } = video;
-      URL.revokeObjectURL(video.src);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
       resolve({ width: videoWidth, height: videoHeight });
     };
     video.onerror = reject;
-    video.src = URL.createObjectURL(videoFile);
+    if (typeof videoFileOrSrc === 'string') {
+      video.src = videoFileOrSrc;
+    } else {
+      objectUrl = URL.createObjectURL(videoFileOrSrc);
+      video.src = objectUrl;
+    }
   });
 }
 
-export default function VideoExporter({ videoFile, points, fileName, names = ['P1', 'P2'], serving = 0, scoreboardTheme, matchConfig }) {
+export default function VideoExporter({ videoFile, videoFilePath, points, fileName, names = ['P1', 'P2'], serving = 0, scoreboardTheme, matchConfig }) {
   const [phase, setPhase] = useState('idle');
   const [progress, setProgress] = useState(0);
   const [stepLabel, setStepLabel] = useState('');
@@ -90,7 +97,8 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
 
   const favoriteCount = points.filter(p => p.isFavorite).length;
   const ptsToExport = favoritesOnly ? points.filter(p => p.isFavorite) : points;
-  const canExport = Boolean(videoFile && ptsToExport.length > 0);
+  const hasVideo = isElectron ? Boolean(videoFilePath) : Boolean(videoFile);
+  const canExport = Boolean(hasVideo && ptsToExport.length > 0);
   const isRunning = phase === 'loading' || phase === 'working';
 
   function tick(prog) {
@@ -100,7 +108,163 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
     setSecsLeft(Math.max(0, Math.ceil((elapsed / prog) - elapsed)));
   }
 
+  // ── Electron native export ────────────────────────────────────────────────
+  async function runExportElectron() {
+    if (!canExport || isRunning) return;
+
+    setPhase('loading');
+    phaseRef.current = 'loading';
+    setProgress(0);
+    setStepLabel('Preparing export…');
+    setSecsLeft(null);
+    setErrorMsg('');
+    startedAt.current = Date.now();
+
+    // Ask the user where to save the output before doing any work
+    const baseName = (fileName || 'video').replace(/\.[^/.]+$/, '');
+    const outputPath = await window.electronAPI.saveOutputFile(`${baseName}_edited.mp4`);
+    if (!outputPath) {
+      // User cancelled the save dialog — abort cleanly
+      setPhase('idle');
+      phaseRef.current = 'idle';
+      return;
+    }
+
+    const tmpFiles = []; // track all temp files for cleanup
+
+    try {
+      setPhase('working');
+      phaseRef.current = 'working';
+
+      // Pre-load font if needed
+      if (showScoreboard && scoreboardTheme?.fontFamily) {
+        try { await document.fonts.load(`700 16px ${scoreboardTheme.fontFamily}`); } catch (_) {}
+      }
+
+      // Probe source dimensions for scoreboard sizing
+      let sbPx = 340;
+      if (showScoreboard) {
+        try {
+          const src = `file://${videoFilePath}`;
+          const { width: srcW, height: srcH } = await probeVideoDimensions(src);
+          const outW = outputWidthForRes(outputRes, srcW, srcH);
+          sbPx = Math.round(outW * 340 / 1280);
+        } catch (_) {}
+      }
+
+      const sf = showScoreboard ? scaleFilter(outputRes) : null;
+
+      // Register a single progress listener for all ffmpeg jobs
+      const jobProgress = {};
+      const unsubProgress = window.electronAPI.onFfmpegProgress(({ jobId, progress: p }) => {
+        jobProgress[jobId] = p;
+      });
+
+      // ── Encode each clip sequentially (native ffmpeg is already fast) ──────
+      setStepLabel(`Encoding clips… 0 / ${ptsToExport.length}`);
+      tick(0.05);
+
+      const segPaths = [];
+
+      for (let i = 0; i < ptsToExport.length; i++) {
+        const pt = ptsToExport[i];
+        const jobId = `seg-${i}-${Date.now()}`;
+        const segPath = await window.electronAPI.getTempDir()
+          .then(d => `${d}/courtclipper-seg-${Date.now()}-${i}.mp4`);
+        tmpFiles.push(segPath);
+
+        const startTime = clipStartTime(pt, matchConfig?.serveMode).toFixed(3);
+        const endTime   = pt.endTime.toFixed(3);
+
+        let args;
+        if (showScoreboard) {
+          // Render scoreboard PNG and write to temp file
+          const canvas  = drawScoreboardToCanvas(pt.scoreBefore, names, pt.serving ?? serving, scoreboardTheme);
+          const pngData = await canvasToUint8Array(canvas);
+          const pngPath = await window.electronAPI.writeTempFile(pngData, 'png');
+          tmpFiles.push(pngPath);
+
+          const fc = buildFilterComplex(sf, sbPx);
+          args = [
+            '-ss', startTime,
+            '-to', endTime,
+            '-i', videoFilePath,
+            '-i', pngPath,
+            '-filter_complex', fc,
+            '-map', '[vout]',
+            '-map', '0:a?',
+            '-c:v', 'h264_videotoolbox',   // hardware-accelerated on macOS
+            '-c:a', 'aac', '-b:a', '128k',
+            '-af', 'aresample=async=1',
+            '-reset_timestamps', '1',
+            '-y', segPath,
+          ];
+        } else {
+          args = [
+            '-ss', startTime,
+            '-to', endTime,
+            '-i', videoFilePath,
+            '-c', 'copy',
+            '-reset_timestamps', '1',
+            '-y', segPath,
+          ];
+        }
+
+        const result = await window.electronAPI.runFfmpeg(args, jobId);
+        if (!result.success) throw new Error(result.error);
+
+        tick(0.05 + ((i + 1) / ptsToExport.length) * 0.75);
+        setStepLabel(`Encoding clips… ${i + 1} / ${ptsToExport.length}`);
+      }
+
+      unsubProgress();
+
+      // ── Concatenate ───────────────────────────────────────────────────────
+      tick(0.82);
+      setStepLabel('Stitching clips…');
+
+      const manifest = segPaths.length
+        ? segPaths.map(p => `file '${p}'`).join('\n')
+        // segPaths wasn't populated above — rebuild from tmpFiles list
+        : tmpFiles.filter(p => p.endsWith('.mp4')).map(p => `file '${p}'`).join('\n');
+
+      const listPath = await window.electronAPI.writeTextFile(manifest, 'txt');
+      tmpFiles.push(listPath);
+
+      const concatJobId = `concat-${Date.now()}`;
+      const concatResult = await window.electronAPI.runFfmpeg([
+        '-f', 'concat',
+        '-safe', '0',
+        '-i', listPath,
+        '-c', 'copy',
+        '-fflags', '+genpts',
+        '-y', outputPath,
+      ], concatJobId);
+
+      if (!concatResult.success) throw new Error(concatResult.error);
+
+      setProgress(1);
+      setPhase('done');
+      setStepLabel('');
+      setSecsLeft(null);
+      phaseRef.current = 'done';
+
+    } catch (err) {
+      console.error('[electron export] failed:', err);
+      setPhase('error');
+      phaseRef.current = 'error';
+      setErrorMsg(err?.message || String(err));
+    } finally {
+      // Clean up all temp files
+      for (const p of tmpFiles) {
+        try { await window.electronAPI.deleteFile(p); } catch (_) {}
+      }
+    }
+  }
+
+  // ── Web WASM export ───────────────────────────────────────────────────────
   async function runExport() {
+    if (isElectron) return runExportElectron();
     if (!canExport || isRunning) return;
 
     setPhase('loading');
@@ -348,7 +512,7 @@ export default function VideoExporter({ videoFile, points, fileName, names = ['P
           onClick={runExport}
           disabled={!canExport}
           title={
-            !videoFile ? 'Load a video first' :
+            !hasVideo ? 'Load a video first' :
             points.length === 0 ? 'Record some points first' : ''
           }
         >

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "homepage": "https://kendrickwang.github.io/tennis-editor",
+  "main": "electron/main.js",
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@ffmpeg/core": "^0.12.10",
@@ -25,7 +26,10 @@
     "copy-ffmpeg": "node -e \"const fs=require('fs');fs.mkdirSync('public/ffmpeg',{recursive:true});fs.copyFileSync('node_modules/@ffmpeg/core/dist/umd/ffmpeg-core.js','public/ffmpeg/ffmpeg-core.js');fs.copyFileSync('node_modules/@ffmpeg/core/dist/umd/ffmpeg-core.wasm','public/ffmpeg/ffmpeg-core.wasm');\"",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "electron:dev": "concurrently --kill-others-on-fail \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:build": "npm run build && electron-builder",
+    "electron:pack": "electron-builder --dir"
   },
   "eslintConfig": {
     "extends": [
@@ -47,7 +51,59 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",
+    "concurrently": "^9.2.1",
+    "electron": "^31.7.7",
+    "electron-builder": "^25.1.8",
     "gh-pages": "^6.3.0",
-    "patch-package": "^8.0.1"
+    "patch-package": "^8.0.1",
+    "wait-on": "^8.0.5"
+  },
+  "build": {
+    "appId": "com.courtclipper.app",
+    "productName": "CourtClipper",
+    "files": [
+      "build/**/*",
+      "electron/**/*",
+      "node_modules/**/*"
+    ],
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.video",
+      "extraFiles": [
+        {
+          "from": "bin/mac/ffmpeg",
+          "to": "MacOS/ffmpeg",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
+    },
+    "dmg": {
+      "title": "CourtClipper",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
   }
 }

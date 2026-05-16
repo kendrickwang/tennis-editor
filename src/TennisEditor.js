@@ -9,6 +9,7 @@ import { INITIAL_SCORE, addPoint, scoreLabel, gameScoreLabel, recomputeScores, c
 import { canBrowserPlayNatively, transcodeToH264 } from './transcodeVideo';
 import { DEFAULT_THEME } from './scoreboardTheme';
 import { VERSION } from './version';
+import { isElectron } from './utils/platform';
 import './TennisEditor.css';
 
 function fmtTime(s) {
@@ -48,6 +49,7 @@ export default function TennisEditor() {
   const [p2Name, setP2Name] = useState('Player 2');
   const [videoSrc, setVideoSrc] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
+  const [videoFilePath, setVideoFilePath] = useState(null); // absolute path (Electron only)
   const [fileName, setFileName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -263,8 +265,51 @@ export default function TennisEditor() {
   }, [videoSrc]);
 
   // ── File handling ──────────────────────────────────────────
+
+  // Electron-native path: load a video directly from an absolute disk path.
+  // No File object needed — native ffmpeg reads the path directly for export.
+  async function handleFilePath(absolutePath) {
+    const name = absolutePath.split(/[\\/]/).pop();
+    setDuration(0);
+    setScore(INITIAL_SCORE);
+    setInitialServer(0);
+    setPoints([]);
+    setPendingStart(null);
+    setFileName(name);
+    setTranscodeProgress(null);
+    setRestorePrompt(null);
+    setVideoFilePath(absolutePath);
+    setVideoFile(null); // not used in Electron export path
+
+    // Offer to restore a previous auto-saved session for this file
+    try {
+      const saved = JSON.parse(localStorage.getItem('tennis-editor-session'));
+      if (saved?.points?.length > 0 && saved.fileName === name) {
+        setRestorePrompt(saved);
+      }
+    } catch (_) {}
+
+    // file:// URLs work directly in Electron's Chromium for any codec
+    setVideoSrc(prev => { if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev); return `file://${absolutePath}`; });
+    setStatus({ text: 'Press S to mark a rally start, then E (P1) or R (P2) to end it', kind: 'idle' });
+  }
+
+  // Open a native file picker (Electron) or the hidden <input> (web)
+  async function openFilePicker() {
+    if (isElectron) {
+      const filePath = await window.electronAPI.openVideoFile();
+      if (filePath) handleFilePath(filePath);
+    } else {
+      fileInputRef.current?.click();
+    }
+  }
+
   async function handleFile(file) {
     if (!file) return;
+    // In Electron, File objects from drag-drop include an absolute path
+    if (isElectron && file.path) {
+      return handleFilePath(file.path);
+    }
     // Accept video/* MIME types, or files with no detected type (exotic formats)
     if (file.type && !file.type.startsWith('video/')) return;
 
@@ -277,6 +322,7 @@ export default function TennisEditor() {
     setFileName(file.name);
     setTranscodeProgress(null);
     setRestorePrompt(null);
+    setVideoFilePath(null);
 
     // Offer to restore a previous auto-saved session for this file
     try {
@@ -944,7 +990,7 @@ export default function TennisEditor() {
         <>
         <div
           className={`te__drop${isDragging ? ' te__drop--active' : ''}${transcodeProgress !== null ? ' te__drop--transcoding' : ''}`}
-          onClick={() => transcodeProgress === null && fileInputRef.current.click()}
+          onClick={() => transcodeProgress === null && openFilePicker()}
           onDrop={e => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]); }}
           onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
@@ -1010,9 +1056,11 @@ export default function TennisEditor() {
                   e.target.value = '';
                 }} />
             </label>
-            <button className="te__topbar-btn" onClick={() => fileInputRef.current.click()}>Change video</button>
-            <input ref={fileInputRef} type="file" accept="video/*"
-              onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
+            <button className="te__topbar-btn" onClick={openFilePicker}>Change video</button>
+            {!isElectron && (
+              <input ref={fileInputRef} type="file" accept="video/*"
+                onChange={e => handleFile(e.target.files[0])} className="te__file-input" />
+            )}
             {points.length > 0 && (
               <button className="te__topbar-btn" onClick={saveSession} title="Download edits as a JSON backup">↓ Save your progress</button>
             )}
@@ -1551,6 +1599,7 @@ export default function TennisEditor() {
                   <div className="te__sb-section-body">
                     <VideoExporter
                       videoFile={videoFile}
+                      videoFilePath={videoFilePath}
                       points={points}
                       fileName={fileName}
                       names={[p1Name, p2Name]}

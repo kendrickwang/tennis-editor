@@ -2,7 +2,16 @@
  * Platform detection — are we running inside the Tauri desktop app?
  * Tauri injects window.__TAURI__ at runtime. Undefined in the browser.
  */
-export const isDesktop = typeof window !== 'undefined' && !!window.__TAURI__;
+export const isTauri    = typeof window !== 'undefined' && !!window.__TAURI__;
+
+/**
+ * Are we running inside the Electron desktop app?
+ * preload.js sets window.electronAPI.isElectron = true via contextBridge.
+ */
+export const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
+
+/** True in either native desktop runtime. */
+export const isDesktop  = isTauri || isElectron;
 
 /**
  * Invoke a Tauri backend command from the React frontend.
