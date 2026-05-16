@@ -45,6 +45,7 @@ function ptDisplayStr(g1, g2, isTb, idx) {
 
 export default function TennisEditor() {
   const [showHelp, setShowHelp] = useState(true);
+  const [pressedKeys, setPressedKeys] = useState(new Set());
   const [p1Name, setP1Name] = useState('Player 1');
   const [p2Name, setP2Name] = useState('Player 2');
   const [videoSrc, setVideoSrc] = useState(null);
@@ -398,6 +399,20 @@ export default function TennisEditor() {
       setSampleLoading(false);
     }
   }
+
+  // ── Key visualizer ─────────────────────────────────────────
+  // Flash a key in the overlay for 600 ms whenever it is pressed.
+  const KEY_CODES = new Set(['Space','KeyS','KeyF','KeyL','KeyE','KeyR','Delete','Backspace','ArrowLeft','ArrowRight','KeyZ']);
+  useEffect(() => {
+    const onDown = (e) => {
+      if (!KEY_CODES.has(e.code)) return;
+      const key = e.code === 'Backspace' ? 'Delete' : e.code;
+      setPressedKeys(prev => new Set([...prev, key]));
+      setTimeout(() => setPressedKeys(prev => { const n = new Set(prev); n.delete(key); return n; }), 500);
+    };
+    window.addEventListener('keydown', onDown);
+    return () => window.removeEventListener('keydown', onDown);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Keyboard shortcuts ─────────────────────────────────────
   // All mutable values read from refs → no deps needed → stable handler
@@ -1129,6 +1144,54 @@ export default function TennisEditor() {
               <div className="te__hint-pill te__hint-pill--r"><kbd>R</kbd><span>Player 2 wins point</span></div>
               <div className="te__hint-pill"><kbd>Del</kbd><kbd>Del</kbd><span>Delete the last point</span></div>
               <div className="te__hint-pill"><kbd>⌘Z</kbd><span>Undo</span></div>
+            </div>
+
+            {/* ── Live key visualizer (demo mode) ──────────────────── */}
+            <div className="te__keyvis">
+              <div className="te__keyvis-row">
+                <div className={`te__keyvis-key te__keyvis-key--wide${pressedKeys.has('Space') ? ' te__keyvis-key--active te__keyvis-key--active-space' : ''}`}>
+                  <span className="te__keyvis-label">SPACE</span>
+                  <span className="te__keyvis-action">Play / Pause</span>
+                </div>
+              </div>
+              <div className="te__keyvis-row">
+                <div className={`te__keyvis-key${pressedKeys.has('ArrowLeft') ? ' te__keyvis-key--active te__keyvis-key--active-arrow' : ''}`}>
+                  <span className="te__keyvis-label">←</span>
+                  <span className="te__keyvis-action">−3s</span>
+                </div>
+                <div className={`te__keyvis-key${pressedKeys.has('ArrowRight') ? ' te__keyvis-key--active te__keyvis-key--active-arrow' : ''}`}>
+                  <span className="te__keyvis-label">→</span>
+                  <span className="te__keyvis-action">+3s</span>
+                </div>
+              </div>
+              <div className="te__keyvis-row">
+                <div className={`te__keyvis-key te__keyvis-key--s${pressedKeys.has('KeyS') ? ' te__keyvis-key--active te__keyvis-key--active-s' : ''}`}>
+                  <span className="te__keyvis-label">S</span>
+                  <span className="te__keyvis-action">Start</span>
+                </div>
+                <div className={`te__keyvis-key te__keyvis-key--f${pressedKeys.has('KeyF') ? ' te__keyvis-key--active te__keyvis-key--active-f' : ''}`}>
+                  <span className="te__keyvis-label">F</span>
+                  <span className="te__keyvis-action">Fault</span>
+                </div>
+                <div className={`te__keyvis-key te__keyvis-key--l${pressedKeys.has('KeyL') ? ' te__keyvis-key--active te__keyvis-key--active-l' : ''}`}>
+                  <span className="te__keyvis-label">L</span>
+                  <span className="te__keyvis-action">Let</span>
+                </div>
+              </div>
+              <div className="te__keyvis-row">
+                <div className={`te__keyvis-key te__keyvis-key--e${pressedKeys.has('KeyE') ? ' te__keyvis-key--active te__keyvis-key--active-e' : ''}`}>
+                  <span className="te__keyvis-label">E</span>
+                  <span className="te__keyvis-action">P1 wins</span>
+                </div>
+                <div className={`te__keyvis-key te__keyvis-key--r${pressedKeys.has('KeyR') ? ' te__keyvis-key--active te__keyvis-key--active-r' : ''}`}>
+                  <span className="te__keyvis-label">R</span>
+                  <span className="te__keyvis-action">P2 wins</span>
+                </div>
+                <div className={`te__keyvis-key${pressedKeys.has('Delete') ? ' te__keyvis-key--active te__keyvis-key--active-del' : ''}`}>
+                  <span className="te__keyvis-label">Del</span>
+                  <span className="te__keyvis-action">Undo pt</span>
+                </div>
+              </div>
             </div>
           )}
 

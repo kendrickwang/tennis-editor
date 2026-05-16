@@ -2012,3 +2012,69 @@ kbd {
   color: #fff;
   border-color: var(--accent);
 }
+
+/* ── Live key visualizer ─────────────────────────────────────── */
+.te__keyvis {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 10px;
+  margin-top: 4px;
+}
+.te__keyvis-row {
+  display: flex;
+  gap: 6px;
+}
+.te__keyvis-key {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px 7px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-lit);
+  border-radius: 8px;
+  transition: background 0.08s, border-color 0.08s, transform 0.08s, box-shadow 0.08s;
+  cursor: default;
+  min-width: 0;
+}
+.te__keyvis-key--wide {
+  flex: 3;
+}
+.te__keyvis-label {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-2);
+  line-height: 1;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+  transition: color 0.08s;
+}
+.te__keyvis-action {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--text-3);
+  text-align: center;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: color 0.08s;
+}
+
+/* Active states — each key gets its own accent color */
+.te__keyvis-key--active {
+  transform: scale(0.94);
+  box-shadow: 0 0 0 2px currentColor;
+}
+.te__keyvis-key--active .te__keyvis-label  { color: #fff; }
+.te__keyvis-key--active .te__keyvis-action { color: rgba(255,255,255,0.75); }
+
+.te__keyvis-key--active-space { background: #6B7280; border-color: #6B7280; }
+.te__keyvis-key--active-arrow { background: #6B7280; border-color: #6B7280; }
+.te__keyvis-key--active-s     { background: #5B5BD6; border-color: #5B5BD6; }
+.te__keyvis-key--active-f     { background: #D97706; border-color: #D97706; }
+.te__keyvis-key--active-l     { background: #7C3AED; border-color: #7C3AED; }
+.te__keyvis-key--active-e     { background: #1E5799; border-color: #1E5799; }
+.te__keyvis-key--active-r     { background: #8E2540; border-color: #8E2540; }
+.te__keyvis-key--active-del   { background: #DC2626; border-color: #DC2626; }
