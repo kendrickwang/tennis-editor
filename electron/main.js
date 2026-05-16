@@ -9,6 +9,34 @@ const { getFfmpegPath } = require('./ffmpeg');
 
 const isDev = !app.isPackaged;
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function mimeForPath(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return ({
+    '.mp4': 'video/mp4', '.m4v': 'video/mp4',
+    '.mov': 'video/quicktime',
+    '.avi': 'video/x-msvideo',
+    '.mkv': 'video/x-matroska',
+    '.webm': 'video/webm',
+    '.mts': 'video/mp2t', '.m2ts': 'video/mp2t', '.ts': 'video/mp2t',
+    '.flv': 'video/x-flv',
+    '.wmv': 'video/x-ms-wmv',
+  })[ext] || 'video/mp4';
+}
+
+// Convert a Node.js Readable stream to a Web ReadableStream for Response body.
+function nodeReadableToWeb(nodeStream) {
+  return new ReadableStream({
+    start(controller) {
+      nodeStream.on('data',  chunk => controller.enqueue(chunk instanceof Buffer ? chunk : Buffer.from(chunk)));
+      nodeStream.on('end',   ()    => controller.close());
+      nodeStream.on('error', err   => controller.error(err));
+    },
+    cancel() { nodeStream.destroy(); },
+  });
+}
+
 // Must be called before app is ready — marks 'media' as a secure, streamable
 // scheme so <video> and fetch() in the renderer can use it with range requests.
 protocol.registerSchemesAsPrivileged([
@@ -45,10 +73,51 @@ function createWindow() {
 // 'media' protocol that proxies to file:// so <video> can stream local files
 // including range requests (needed for seeking).
 app.whenReady().then(() => {
+  // Serve local video files with proper byte-range support so <video> can seek.
+  // net.fetch(file://) doesn't honour Range headers, so we implement it manually.
   protocol.handle('media', (request) => {
-    // media:///abs/path/to/file.mp4  →  file:///abs/path/to/file.mp4
-    const fileUrl = request.url.replace(/^media:\/\//, 'file://');
-    return net.fetch(fileUrl, { bypassCustomProtocolHandlers: true });
+    const filePath = decodeURIComponent(new URL(request.url).pathname);
+
+    let stat;
+    try { stat = fs.statSync(filePath); }
+    catch { return new Response('Not found', { status: 404 }); }
+
+    const fileSize = stat.size;
+    const mimeType = mimeForPath(filePath);
+    const rangeHeader = request.headers.get('Range');
+
+    if (rangeHeader) {
+      // Parse "bytes=start-end"
+      const [startStr, endStr] = rangeHeader.replace(/bytes=/, '').split('-');
+      const start = parseInt(startStr, 10);
+      const end   = endStr ? parseInt(endStr, 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
+
+      const nodeStream = fs.createReadStream(filePath, { start, end });
+      const body = nodeReadableToWeb(nodeStream);
+
+      return new Response(body, {
+        status:  206,
+        headers: {
+          'Content-Type':   mimeType,
+          'Content-Range':  `bytes ${start}-${end}/${fileSize}`,
+          'Content-Length': String(chunkSize),
+          'Accept-Ranges':  'bytes',
+        },
+      });
+    }
+
+    // Full file
+    const nodeStream = fs.createReadStream(filePath);
+    const body = nodeReadableToWeb(nodeStream);
+    return new Response(body, {
+      status:  200,
+      headers: {
+        'Content-Type':   mimeType,
+        'Content-Length': String(fileSize),
+        'Accept-Ranges':  'bytes',
+      },
+    });
   });
 
   createWindow();
